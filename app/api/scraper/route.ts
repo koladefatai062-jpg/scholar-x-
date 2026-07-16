@@ -7,12 +7,12 @@ import { createAdminClient } from '@/lib/supabase-server'
 
 export async function GET(request: NextRequest) {
   // Verify this is called by cron or admin — check secret key
-  const authHeader = request.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET || 'scholarx-cron-secret'
+  //const authHeader = request.headers.get('authorization')
+ // const cronSecret = process.env.CRON_SECRET || 'scholarx-cron-secret'
 
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+ // if (authHeader !== `Bearer ${cronSecret}`) {
+ //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+//  }
 
   const supabase = createAdminClient()
   const results: any[] = []

@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   if (existing) {
     // Unlike
     await supabase.from('post_likes').delete().eq('id', existing.id)
-    await supabase.from('posts').update({ likes_count: supabase.rpc('decrement', { x: 1 }) }).eq('id', post_id)
+    await supabase.rpc('decrement_likes', { post_id })
     return NextResponse.json({ liked: false })
   } else {
     // Like

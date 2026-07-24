@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   if (existing) {
     // Leave group
     await supabase.from('group_members').delete().eq('id', existing.id)
-    await supabase.from('groups').update({ member_count: supabase.rpc('decrement', { x: 1 }) }).eq('id', group_id)
+    await supabase.rpc('decrement_group_members', { group_id })
     return NextResponse.json({ joined: false })
   }
 

@@ -24,7 +24,7 @@ const examData: Record<string, { desc: string; subs: string[] }> = {
 
 const features = [
   { icon: <Target size={20} color={C.accent} />, title: 'CBT Quiz Mode', body: 'Timed, randomised past questions like the real exam. Track your score per topic, see your weak spots.' },
-  { icon: <Brain size={20} color={C.cyan} />, title: 'AI Tutor', body: 'Ask anything in plain English. Get a real explanation, not just the answer. Powered by Llama 4 via Groq.' },
+  { icon: <Brain size={20} color={C.cyan} />, title: 'AI Tutor', body: 'Ask anything in plain English. Get a real explanation, not just the answer. Powered by Google Gemini.' },
   { icon: <BookOpen size={20} color={C.gold} />, title: 'Library', body: 'Textbooks and study materials by subject and level. No more searching around.' },
   { icon: <Users size={20} color={C.green} />, title: 'Study Groups', body: 'Join communities by subject. Share notes, ask questions, study together across Nigeria.' },
   { icon: <TrendingUp size={20} color={C.accent} />, title: 'Grade Tracker', body: 'University CGPA or secondary term results. Know exactly where you stand.' },

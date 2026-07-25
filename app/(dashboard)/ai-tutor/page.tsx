@@ -148,7 +148,7 @@ export default function AITutorPage() {
           </div>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>ScholarX AI Tutor</div>
-            <div style={{ fontSize: 12, color: '#7B6FA0' }}>Powered by Llama 4 via Groq</div>
+            <div style={{ fontSize: 12, color: '#7B6FA0' }}>Powered by Google Gemini</div>
           </div>
         </div>
 

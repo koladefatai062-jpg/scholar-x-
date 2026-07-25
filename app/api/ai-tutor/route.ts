@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import https from 'https'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
-const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null
 const DEFAULT_GEMINI_MODELS = [
   process.env.GEMINI_MODEL || 'gemini-2.0-flash',
   'gemini-2.0-flash-exp',
@@ -11,6 +10,36 @@ const DEFAULT_GEMINI_MODELS = [
   'gemini-1.5-flash',
 ]
 const FREE_DAILY_LIMIT = 10
+
+function geminiRequest(model: string, body: object): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify(body)
+    const req = https.request({
+      hostname: 'generativelanguage.googleapis.com',
+      path: `/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(data),
+      },
+      timeout: 60000,
+    }, (res) => {
+      let body = ''
+      res.on('data', (chunk) => { body += chunk })
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(body))
+        } catch {
+          reject(new Error(`Invalid response: ${body.slice(0, 200)}`))
+        }
+      })
+    })
+    req.on('error', reject)
+    req.on('timeout', () => { req.destroy(); reject(new Error('Request timed out')) })
+    req.write(data)
+    req.end()
+  })
+}
 
 function getSystemPrompt(role: string, level: string) {
   return `You are ScholarX AI Tutor — a smart, friendly tutor for Nigerian students.
@@ -83,7 +112,6 @@ export async function POST(request: NextRequest) {
       }, { status: 429 })
     }
 
-    // Increment usage
     await supabase
       .from('ai_usage')
       .upsert({ user_id: user.id, date: today, count: currentCount + 1 }, { onConflict: 'user_id,date' })
@@ -96,9 +124,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'messages array is required' }, { status: 400 })
   }
 
-  if (!genAI) {
+  if (!GEMINI_API_KEY) {
     return NextResponse.json({ error: 'AI service is not configured right now.' }, { status: 503 })
   }
+
+  const systemPrompt = getSystemPrompt(profile.role, profile.level)
 
   try {
     const history = messages.slice(0, -1).map((m: any) => ({
@@ -112,15 +142,22 @@ export async function POST(request: NextRequest) {
 
     for (const modelName of DEFAULT_GEMINI_MODELS) {
       try {
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: getSystemPrompt(profile.role, profile.level),
-        })
+        const geminiBody = {
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [
+            ...history,
+            { role: 'user', parts: [{ text: lastMessage.content }] },
+          ],
+        }
 
-        const chat = model.startChat({ history })
-        const result = await chat.sendMessage(lastMessage.content)
-        reply = result.response.text()
-        break
+        const result = await geminiRequest(modelName, geminiBody)
+
+        if (result.error) {
+          throw new Error(result.error.message || JSON.stringify(result.error))
+        }
+
+        reply = result.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        if (reply) break
       } catch (error) {
         lastError = error
         const message = error instanceof Error ? error.message : String(error)
@@ -134,7 +171,6 @@ export async function POST(request: NextRequest) {
       throw lastError || new Error('No Gemini response received')
     }
 
-    // Save conversation to Supabase
     if (conversation_id) {
       const updatedMessages = [
         ...messages,
@@ -147,7 +183,6 @@ export async function POST(request: NextRequest) {
         .eq('user_id', user.id)
     }
 
-    // Get remaining count for free users
     let remaining = null
     if (!profile.is_premium) {
       const today = new Date().toISOString().split('T')[0]
@@ -186,7 +221,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET — fetch or create conversation + usage count
 export async function GET(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -200,7 +234,6 @@ export async function GET(request: NextRequest) {
 
   const today = new Date().toISOString().split('T')[0]
 
-  // Get or create today's conversation
   let { data: conversation } = await supabase
     .from('ai_conversations')
     .select('*')
@@ -219,7 +252,6 @@ export async function GET(request: NextRequest) {
     conversation = newConv
   }
 
-  // Get usage count
   let remaining = null
   if (!profile?.is_premium) {
     const { data: usage } = await supabase

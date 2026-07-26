@@ -92,16 +92,18 @@ export async function POST(request: NextRequest) {
   }
 
   // Check daily limit for free users
+  let currentCount = 0
   if (!profile.is_premium) {
     const today = new Date().toISOString().split('T')[0]
-    const { data: usage } = await supabase
-      .from('ai_usage')
-      .select('count')
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .single()
-
-    const currentCount = usage?.count || 0
+    try {
+      const { data: usage } = await supabase
+        .from('ai_usage')
+        .select('count')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .single()
+      currentCount = usage?.count || 0
+    } catch {}
 
     if (currentCount >= FREE_DAILY_LIMIT) {
       return NextResponse.json({
@@ -112,9 +114,11 @@ export async function POST(request: NextRequest) {
       }, { status: 429 })
     }
 
-    await supabase
-      .from('ai_usage')
-      .upsert({ user_id: user.id, date: today, count: currentCount + 1 }, { onConflict: 'user_id,date' })
+    try {
+      await supabase
+        .from('ai_usage')
+        .upsert({ user_id: user.id, date: today, count: currentCount + 1 }, { onConflict: 'user_id,date' })
+    } catch {}
   }
 
   const body = await request.json()
@@ -128,7 +132,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'AI service is not configured right now.' }, { status: 503 })
   }
 
-  const systemPrompt = getSystemPrompt(profile.role, profile.level)
+  const role = profile.role || 'secondary'
+  const level = profile.level || 'SS3'
+  const systemPrompt = getSystemPrompt(role, level)
 
   try {
     const history = messages.slice(0, -1).map((m: any) => ({
@@ -153,7 +159,12 @@ export async function POST(request: NextRequest) {
         const result = await geminiRequest(modelName, geminiBody)
 
         if (result.error) {
-          throw new Error(result.error.message || JSON.stringify(result.error))
+          const errMsg = result.error.message || JSON.stringify(result.error)
+          if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota')) {
+            lastError = new Error(errMsg)
+            continue
+          }
+          throw new Error(errMsg)
         }
 
         reply = result.candidates?.[0]?.content?.parts?.[0]?.text || ''
@@ -161,6 +172,9 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         lastError = error
         const message = error instanceof Error ? error.message : String(error)
+        if (message.includes('429') || message.includes('RESOURCE_EXHAUSTED') || message.includes('quota')) {
+          continue
+        }
         if (!message.includes('404') && !message.includes('not found') && !message.includes('unsupported')) {
           throw error
         }
@@ -172,27 +186,31 @@ export async function POST(request: NextRequest) {
     }
 
     if (conversation_id) {
-      const updatedMessages = [
-        ...messages,
-        { role: 'assistant', content: reply, timestamp: new Date().toISOString() },
-      ]
-      await supabase
-        .from('ai_conversations')
-        .update({ messages: updatedMessages, updated_at: new Date().toISOString() })
-        .eq('id', conversation_id)
-        .eq('user_id', user.id)
+      try {
+        const updatedMessages = [
+          ...messages,
+          { role: 'assistant', content: reply, timestamp: new Date().toISOString() },
+        ]
+        await supabase
+          .from('ai_conversations')
+          .update({ messages: updatedMessages, updated_at: new Date().toISOString() })
+          .eq('id', conversation_id)
+          .eq('user_id', user.id)
+      } catch {}
     }
 
     let remaining = null
     if (!profile.is_premium) {
-      const today = new Date().toISOString().split('T')[0]
-      const { data: usage } = await supabase
-        .from('ai_usage')
-        .select('count')
-        .eq('user_id', user.id)
-        .eq('date', today)
-        .single()
-      remaining = FREE_DAILY_LIMIT - (usage?.count || 0)
+      try {
+        const today = new Date().toISOString().split('T')[0]
+        const { data: usage } = await supabase
+          .from('ai_usage')
+          .select('count')
+          .eq('user_id', user.id)
+          .eq('date', today)
+          .single()
+        remaining = FREE_DAILY_LIMIT - (usage?.count || 0)
+      } catch {}
     }
 
     return NextResponse.json({ reply, remaining })
@@ -201,20 +219,22 @@ export async function POST(request: NextRequest) {
     console.error('Gemini error:', err)
     const fallbackReply = getFallbackReply(
       messages[messages.length - 1]?.content || '',
-      profile.role,
-      profile.level
+      role,
+      level
     )
 
     if (conversation_id) {
-      const updatedMessages = [
-        ...messages,
-        { role: 'assistant', content: fallbackReply, timestamp: new Date().toISOString() },
-      ]
-      await supabase
-        .from('ai_conversations')
-        .update({ messages: updatedMessages, updated_at: new Date().toISOString() })
-        .eq('id', conversation_id)
-        .eq('user_id', user.id)
+      try {
+        const updatedMessages = [
+          ...messages,
+          { role: 'assistant', content: fallbackReply, timestamp: new Date().toISOString() },
+        ]
+        await supabase
+          .from('ai_conversations')
+          .update({ messages: updatedMessages, updated_at: new Date().toISOString() })
+          .eq('id', conversation_id)
+          .eq('user_id', user.id)
+      } catch {}
     }
 
     return NextResponse.json({ reply: fallbackReply, fallback: true, remaining: null }, { status: 200 })
@@ -234,34 +254,42 @@ export async function GET(request: NextRequest) {
 
   const today = new Date().toISOString().split('T')[0]
 
-  let { data: conversation } = await supabase
-    .from('ai_conversations')
-    .select('*')
-    .eq('user_id', user.id)
-    .gte('created_at', today)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
+  let conversation: any = null
+  try {
+    let result = await supabase
+      .from('ai_conversations')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('created_at', today)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+    conversation = result.data
+  } catch {}
 
   if (!conversation) {
-    const { data: newConv } = await supabase
-      .from('ai_conversations')
-      .insert({ user_id: user.id, messages: [] })
-      .select()
-      .single()
-    conversation = newConv
+    try {
+      const { data: newConv } = await supabase
+        .from('ai_conversations')
+        .insert({ user_id: user.id, messages: [] })
+        .select()
+        .single()
+      conversation = newConv
+    } catch {}
   }
 
   let remaining = null
   if (!profile?.is_premium) {
-    const { data: usage } = await supabase
-      .from('ai_usage')
-      .select('count')
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .single()
-    remaining = FREE_DAILY_LIMIT - (usage?.count || 0)
+    try {
+      const { data: usage } = await supabase
+        .from('ai_usage')
+        .select('count')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .single()
+      remaining = FREE_DAILY_LIMIT - (usage?.count || 0)
+    } catch {}
   }
 
-  return NextResponse.json({ conversation, remaining, is_premium: profile?.is_premium })
+  return NextResponse.json({ conversation: conversation || { id: null, messages: [] }, remaining, is_premium: profile?.is_premium })
 }

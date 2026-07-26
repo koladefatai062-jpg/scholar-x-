@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Send, ThumbsUp, MessageCircle, Users, Plus, X, Lock } from 'lucide-react'
+import { Send, ThumbsUp, MessageCircle, Users, Plus, X, Lock, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40',
@@ -47,6 +48,7 @@ export default function CommunityPage() {
   const [groupForm, setGroupForm] = useState({ name: '', subject: '', description: '' })
   const [isMobile, setIsMobile] = useState(false)
   const supabase = createClient()
+  const router = useRouter()
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -323,6 +325,11 @@ export default function CommunityPage() {
                   <button onClick={() => joinGroup(group.id)} style={{ width: '100%', padding: '9px', borderRadius: 8, border: `1px solid ${group.is_joined ? C.border : C.accent}`, background: group.is_joined ? 'transparent' : `${C.accent}1E`, color: group.is_joined ? C.muted : C.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                     {group.is_joined ? 'Leave group' : !isPremium && membershipCount >= 3 ? '🔒 Upgrade to join' : 'Join group'}
                   </button>
+                  {group.is_joined && (
+                    <button onClick={() => router.push(`/community/group/${group.id}`)} style={{ width: '100%', padding: '9px', borderRadius: 8, border: 'none', background: `linear-gradient(135deg,${C.accent},#5B21B6)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      Open chat <ChevronRight size={14} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

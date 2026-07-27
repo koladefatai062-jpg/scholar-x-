@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Settings, User, CreditCard, Bell, Shield, LogOut } from 'lucide-react'
-import { createClient } from '@/lib/supabase'
+import { User, Lock, Bell, CreditCard, Info, LogOut, ChevronRight, Check, X } from 'lucide-react'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40',
@@ -12,14 +11,45 @@ const C = {
   gold: '#F59E0B', green: '#22C55E', red: '#EF4444',
 }
 
+const SEC_LEVELS = ['JSS1', 'JSS2', 'JSS3', 'SS1', 'SS2', 'SS3']
+const UNI_LEVELS = ['100L', '200L', '300L', '400L', '500L', '600L']
+
+interface UserProfile {
+  id: string
+  email: string
+  full_name: string
+  role: string
+  level: string
+  is_premium: boolean
+  premium_expires_at: string | null
+  streak: number
+}
+
 export default function SettingsPage() {
   const router = useRouter()
-  const supabase = createClient()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [fullName, setFullName] = useState('')
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+
+  // Form state
+  const [fullName, setFullName] = useState('')
+  const [level, setLevel] = useState('')
+
+  // Password form
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSaved, setPasswordSaved] = useState(false)
+
+  // Notifications
+  const [emailNotifs, setEmailNotifs] = useState(true)
+  const [pushNotifs, setPushNotifs] = useState(true)
+
+  // Delete account
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -28,107 +58,265 @@ export default function SettingsPage() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  useEffect(() => { fetchProfile() }, [])
+  useEffect(() => { fetchUser() }, [])
 
-  const fetchProfile = async () => {
-    const { data: { user: authUser } } = await supabase.auth.getUser()
-    if (!authUser) { router.push('/login'); return }
-
-    const { data: profile } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', authUser.id)
-      .single()
-
-    setUser(profile)
-    setFullName(profile?.full_name || '')
+  const fetchUser = async () => {
+    try {
+      const res = await fetch('/api/auth/me')
+      const data = await res.json()
+      if (data.user) {
+        setUser(data.user)
+        setFullName(data.user.full_name || '')
+        setLevel(data.user.level || '')
+      }
+    } catch {}
     setLoading(false)
   }
 
-  const updateProfile = async () => {
-    if (!user || !fullName.trim()) return
+  const saveProfile = async () => {
     setSaving(true)
-    await supabase.from('users').update({ full_name: fullName }).eq('id', user.id)
-    setUser({ ...user, full_name: fullName })
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full_name: fullName, level }),
+      })
+      const data = await res.json()
+      if (data.user) {
+        setUser(data.user)
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      }
+    } catch {}
     setSaving(false)
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
+  const changePassword = async () => {
+    setPasswordError('')
+    if (newPassword.length < 8) { setPasswordError('Password must be at least 8 characters'); return }
+    if (newPassword !== confirmPassword) { setPasswordError('Passwords do not match'); return }
+
+    try {
+      const res = await fetch('/api/settings/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword }),
+      })
+      const data = await res.json()
+      if (data.error) { setPasswordError(data.error); return }
+      setPasswordSaved(true)
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => { setPasswordSaved(false); setShowPasswordForm(false) }, 2000)
+    } catch { setPasswordError('Something went wrong. Try again.') }
+  }
+
+  const logout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/')
   }
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-      <div style={{ fontSize: 14, color: C.muted }}>Loading...</div>
-    </div>
-  )
+  const deleteAccount = async () => {
+    try {
+      await fetch('/api/settings', { method: 'DELETE' })
+      router.push('/')
+    } catch {}
+  }
+
+  const initials = user?.full_name
+    ? user.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'SX'
+
+  const levels = user?.role === 'university' ? UNI_LEVELS : SEC_LEVELS
+
+  if (loading) return <div style={{ padding: 40, color: C.muted, textAlign: 'center' }}>Loading...</div>
 
   return (
-    <div style={{ padding: isMobile ? '16px' : '24px 28px', maxWidth: 700 }}>
-      <div style={{ marginBottom: 28 }}>
-        <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: C.white, marginBottom: 4 }}>Settings</h2>
-        <p style={{ color: C.muted, fontSize: 14 }}>Manage your account and preferences.</p>
-      </div>
+    <div style={{ padding: isMobile ? '16px' : '24px 28px', maxWidth: 600 }}>
+      <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: C.white, marginBottom: 24 }}>Settings</h2>
 
       {/* Profile section */}
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <User size={18} color={C.accent} />
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: C.white }}>Profile</h3>
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+          <User size={15} color={C.accent} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: 1 }}>Profile</span>
         </div>
 
-        <div style={{ marginBottom: 16 }}>
+        {/* Avatar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: `linear-gradient(135deg,${C.accent},${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ fontSize: 20, fontWeight: 800, color: '#fff' }}>{initials}</span>
+          </div>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.white }}>{user?.full_name || 'Student'}</div>
+            <div style={{ fontSize: 13, color: C.muted }}>{user?.email}</div>
+            <div style={{ fontSize: 12, color: user?.is_premium ? C.accent : C.muted, marginTop: 2 }}>
+              {user?.is_premium ? '⚡ Premium member' : 'Free plan'} · {user?.streak || 0} day streak 🔥
+            </div>
+          </div>
+        </div>
+
+        {/* Full name */}
+        <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 12, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 5 }}>Full name</label>
-          <input value={fullName} onChange={e => setFullName(e.target.value)} style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+          <input value={fullName} onChange={e => setFullName(e.target.value)}
+            style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
         </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 12, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 5 }}>Email</label>
-          <input value={user?.email || ''} disabled style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.muted, fontSize: 14, outline: 'none', boxSizing: 'border-box', opacity: 0.6 }} />
+        {/* Email (read only) */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 12, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 5 }}>Email address</label>
+          <input value={user?.email || ''} disabled
+            style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.muted, fontSize: 14, outline: 'none', boxSizing: 'border-box', opacity: 0.7 }} />
         </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 12, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 5 }}>Level</label>
-          <input value={user?.level || 'SS3'} disabled style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.muted, fontSize: 14, outline: 'none', boxSizing: 'border-box', opacity: 0.6 }} />
+        {/* Level */}
+        <div style={{ marginBottom: 18 }}>
+          <label style={{ fontSize: 12, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 8 }}>Your level</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {levels.map(l => (
+              <button key={l} onClick={() => setLevel(l)} style={{ padding: '7px 14px', borderRadius: 7, border: `1px solid ${level === l ? C.cyan : C.border}`, background: level === l ? `${C.cyan}18` : 'transparent', color: level === l ? C.cyan : C.muted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{l}</button>
+            ))}
+          </div>
         </div>
 
-        <button onClick={updateProfile} disabled={saving || !fullName.trim()} style={{ background: fullName.trim() ? `linear-gradient(135deg,${C.accent},#5B21B6)` : C.border, border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: fullName.trim() ? 'pointer' : 'default' }}>
-          {saving ? 'Saving...' : 'Save changes'}
+        <button onClick={saveProfile} disabled={saving} style={{ background: saving ? C.border : `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '11px 22px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: saving ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
+          {saved ? <><Check size={15} />Saved!</> : saving ? 'Saving...' : 'Save changes'}
         </button>
       </div>
 
-      {/* Subscription section */}
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <CreditCard size={18} color={C.gold} />
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: C.white }}>Subscription</h3>
+      {/* Plan section */}
+      <div style={{ background: user?.is_premium ? `linear-gradient(160deg,${C.accent}15,${C.card})` : C.card, border: `1px solid ${user?.is_premium ? C.accent + '44' : C.border}`, borderRadius: 14, padding: 20, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <CreditCard size={15} color={C.accent} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: 1 }}>Plan</span>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: C.surface, borderRadius: 10, border: `1px solid ${user?.is_premium ? C.accent + '44' : C.border}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: C.white }}>{user?.is_premium ? '⭐ Premium' : 'Free Plan'}</div>
-            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{user?.is_premium ? 'Unlimited access to all features' : 'Limited to 10 AI messages/day'}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.white, marginBottom: 4 }}>
+              {user?.is_premium ? '⚡ Premium' : 'Free plan'}
+            </div>
+            <div style={{ fontSize: 13, color: C.muted }}>
+              {user?.is_premium
+                ? `Expires: ${user.premium_expires_at ? new Date(user.premium_expires_at).toLocaleDateString('en-NG') : 'N/A'}`
+                : 'Upgrade for unlimited AI tutor, all past questions, and more'}
+            </div>
           </div>
           {!user?.is_premium && (
-            <button onClick={() => {}} style={{ background: `linear-gradient(135deg,${C.cyan},${C.accent})`, border: 'none', color: '#fff', padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              Upgrade
+            <button style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              Upgrade ₦5,000/yr
             </button>
           )}
         </div>
+
+        {/* Plan features */}
+        {!user?.is_premium && (
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+            <p style={{ fontSize: 12, color: C.muted, marginBottom: 10, fontWeight: 600 }}>PREMIUM INCLUDES:</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              {['Unlimited AI tutor', 'All past questions', 'Answer explanations', 'Unlimited groups', 'Premium library', 'Advanced grades'].map(f => (
+                <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.text }}>
+                  <Check size={12} color={C.green} />{f}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Account section */}
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <Shield size={18} color={C.red} />
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: C.white }}>Account</h3>
+      {/* Notifications */}
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <Bell size={15} color={C.accent} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: 1 }}>Notifications</span>
+        </div>
+        {[['Push notifications', pushNotifs, setPushNotifs], ['Email updates', emailNotifs, setEmailNotifs]].map(([label, val, set]: any) => (
+          <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <span style={{ fontSize: 14, color: C.text }}>{label as string}</span>
+            <button onClick={() => set((v: boolean) => !v)} style={{ width: 44, height: 24, borderRadius: 12, background: val ? `linear-gradient(135deg,${C.accent},#5B21B6)` : C.border, border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
+              <div style={{ position: 'absolute', top: 3, left: val ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Security */}
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <Lock size={15} color={C.accent} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: 1 }}>Security</span>
         </div>
 
-        <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 9, border: `1px solid ${C.red}44`, background: `${C.red}11`, color: C.red, fontSize: 14, fontWeight: 600, cursor: 'pointer', width: '100%' }}>
-          <LogOut size={16} />Log out
+        <button onClick={() => setShowPasswordForm(f => !f)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'none', border: 'none', color: C.text, cursor: 'pointer', padding: '6px 0', fontSize: 14 }}>
+          <span>Change password</span>
+          <ChevronRight size={16} color={C.muted} />
         </button>
+
+        {showPasswordForm && (
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+            {[['New password', newPassword, setNewPassword], ['Confirm password', confirmPassword, setConfirmPassword]].map(([label, val, set]: any) => (
+              <div key={label as string} style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 12, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 5 }}>{label as string}</label>
+                <input type="password" value={val as string} onChange={e => set(e.target.value)}
+                  style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+            ))}
+            {passwordError && <p style={{ fontSize: 12, color: C.red, marginBottom: 10 }}>{passwordError}</p>}
+            {passwordSaved && <p style={{ fontSize: 12, color: C.green, marginBottom: 10 }}>Password changed successfully!</p>}
+            <button onClick={changePassword} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              Update password
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* About */}
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <Info size={15} color={C.accent} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: 1 }}>About</span>
+        </div>
+        {[['ScholarX', 'Nigeria\'s smartest study platform'], ['Version', '1.0.0'], ['Terms of Service', 'scholarx.com/terms'], ['Privacy Policy', 'scholarx.com/privacy']].map(([label, value]) => (
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${C.border}` }}>
+            <span style={{ fontSize: 14, color: C.text }}>{label}</span>
+            <span style={{ fontSize: 13, color: C.muted }}>{value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Logout */}
+      <button onClick={logout} style={{ width: '100%', background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, padding: '12px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12 }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = C.red; e.currentTarget.style.color = C.red }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted }}>
+        <LogOut size={16} />Log out
+      </button>
+
+      {/* Delete account */}
+      <button onClick={() => setShowDeleteConfirm(true)} style={{ width: '100%', background: 'transparent', border: `1px solid ${C.red}33`, color: C.red, padding: '12px', borderRadius: 10, fontSize: 14, cursor: 'pointer', opacity: 0.7 }}>
+        Delete account
+      </button>
+
+      {/* Delete confirm modal */}
+      {showDeleteConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 28, width: '100%', maxWidth: 380, textAlign: 'center' }}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: `${C.red}18`, border: `1px solid ${C.red}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <X size={24} color={C.red} />
+            </div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: C.white, marginBottom: 8 }}>Delete account?</h3>
+            <p style={{ fontSize: 14, color: C.muted, marginBottom: 24, lineHeight: 1.6 }}>This will permanently delete your account, quiz history, grades, and all your data. This cannot be undone.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, background: 'transparent', border: `1px solid ${C.border}`, color: C.text, padding: '11px', borderRadius: 9, fontSize: 14, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={deleteAccount} style={{ flex: 1, background: C.red, border: 'none', color: '#fff', padding: '11px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

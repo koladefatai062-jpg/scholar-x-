@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScholarX Splash v2</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh;
+    background: #0A0628;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: 'Inter', -apple-system, sans-serif;
+    overflow: hidden; position: relative;
+  }
+
+  /* Animated grid background */
+  .grid-bg {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(#7C3AED0A 1px, transparent 1px),
+      linear-gradient(90deg, #7C3AED0A 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridMove 20s linear infinite;
+  }
+  @keyframes gridMove {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(40px, 40px); }
+  }
+
+  /* Glowing ring */
+  .ring {
+    width: 160px; height: 160px; border-radius: 50%;
+    border: 2px solid #7C3AED22;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    animation: ringPulse 3s ease-in-out infinite;
+  }
+  .ring::before {
+    content: ''; position: absolute; inset: -20px;
+    border-radius: 50%; border: 1px solid #06B6D415;
+    animation: ringPulse 3s 0.5s ease-in-out infinite;
+  }
+  .ring::after {
+    content: ''; position: absolute; inset: -40px;
+    border-radius: 50%; border: 1px solid #7C3AED10;
+    animation: ringPulse 3s 1s ease-in-out infinite;
+  }
+  @keyframes ringPulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+  }
+
+  /* Icon */
+  .icon {
+    width: 80px; height: 80px; border-radius: 22px;
+    background: linear-gradient(135deg, #7C3AED, #5B21B6);
+    display: flex; align-items: center; justify-content: center;
+    animation: iconSpin 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    box-shadow: 0 0 40px #7C3AED55, 0 0 80px #7C3AED22;
+  }
+  @keyframes iconSpin {
+    0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+
+  .title {
+    margin-top: 36px; font-size: 36px; font-weight: 900;
+    color: #fff; letter-spacing: -1.5px;
+    animation: slideUp 0.6s 0.4s both;
+  }
+  .title span {
+    background: linear-gradient(135deg, #7C3AED, #06B6D4);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .tagline {
+    margin-top: 10px; font-size: 15px; color: #7B6FA0;
+    letter-spacing: 0.5px;
+    animation: slideUp 0.6s 0.6s both;
+  }
+
+  /* Loading bar */
+  .loader-wrap {
+    margin-top: 50px; width: 180px;
+    animation: slideUp 0.6s 0.8s both;
+  }
+  .loader {
+    width: 100%; height: 3px; background: #1E1450;
+    border-radius: 4px; overflow: hidden;
+  }
+  .loader-bar {
+    height: 100%; width: 0%; border-radius: 4px;
+    background: linear-gradient(90deg, #7C3AED, #06B6D4);
+    animation: load 2.5s 1s ease-in-out forwards;
+  }
+  @keyframes load {
+    0% { width: 0%; }
+    30% { width: 45%; }
+    60% { width: 70%; }
+    100% { width: 100%; }
+  }
+
+  .version {
+    position: absolute; bottom: 24px;
+    font-size: 11px; color: #7B6FA033;
+    letter-spacing: 2px;
+  }
+
+  @keyframes slideUp {
+    0% { transform: translateY(20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+</style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+
+  <div class="ring">
+    <div class="icon">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+        <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="title">Scholar<span>X</span></div>
+  <div class="tagline">Start understanding.</div>
+
+  <div class="loader-wrap">
+    <div class="loader">
+      <div class="loader-bar"></div>
+    </div>
+  </div>
+
+  <div class="version">v1.0.0</div>
+</body>
+</html>

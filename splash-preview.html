@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScholarX Splash Screen</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh;
+    background: #0A0628;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow: hidden;
+  }
+  .bg-orb-1 {
+    position: absolute; top: 10%; left: 5%;
+    width: 300px; height: 300px; border-radius: 50%;
+    background: radial-gradient(circle, #7C3AED22, transparent 70%);
+    animation: float 6s ease-in-out infinite;
+  }
+  .bg-orb-2 {
+    position: absolute; bottom: 15%; right: 8%;
+    width: 220px; height: 220px; border-radius: 50%;
+    background: radial-gradient(circle, #06B6D418, transparent 70%);
+    animation: float 8s ease-in-out infinite reverse;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+  }
+  .icon-wrap {
+    width: 100px; height: 100px;
+    border-radius: 26px;
+    background: linear-gradient(135deg, #7C3AED, #06B6D4);
+    display: flex; align-items: center; justify-content: center;
+    animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    box-shadow: 0 20px 60px #7C3AED44;
+  }
+  .icon-wrap svg { width: 52px; height: 52px; }
+  @keyframes popIn {
+    0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+  .title {
+    margin-top: 28px;
+    font-size: 32px; font-weight: 900;
+    color: #fff; letter-spacing: -1px;
+    animation: fadeUp 0.5s 0.3s both;
+  }
+  .title span {
+    background: linear-gradient(90deg, #7C3AED, #06B6D4);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    margin-top: 8px; font-size: 14px;
+    color: #7B6FA0; animation: fadeUp 0.5s 0.5s both;
+  }
+  @keyframes fadeUp {
+    0% { transform: translateY(16px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  .dots {
+    margin-top: 48px; display: flex; gap: 8px;
+    animation: fadeUp 0.5s 0.7s both;
+  }
+  .dots div {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #7C3AED;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  .dots div:nth-child(2) { animation-delay: 0.2s; }
+  .dots div:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse {
+    0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1.1); }
+  }
+  .phone-frame {
+    position: absolute; bottom: 20px;
+    font-size: 11px; color: #7B6FA044;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+  <div class="bg-orb-1"></div>
+  <div class="bg-orb-2"></div>
+
+  <div class="icon-wrap">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+      <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+    </svg>
+  </div>
+
+  <div class="title">Scholar<span>X</span></div>
+  <div class="subtitle">Nigeria's smartest study platform</div>
+
+  <div class="dots">
+    <div></div><div></div><div></div>
+  </div>
+
+  <div class="phone-frame">Splash Screen Preview</div>
+</body>
+</html>

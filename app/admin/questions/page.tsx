@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, X, HelpCircle } from 'lucide-react'
+import { Plus, Trash2, X, HelpCircle, Camera, Sparkles } from 'lucide-react'
 
 const C = { bg:'#0A0628',surface:'#110836',card:'#150D40',border:'#1E1450',accent:'#7C3AED',cyan:'#06B6D4',text:'#E2D9F3',muted:'#7B6FA0',white:'#FFFFFF',gold:'#F59E0B',green:'#22C55E',red:'#EF4444' }
 const EXAMS = ['JAMB', 'WAEC', 'NECO', 'BECE', 'POST-UTME']
@@ -13,11 +13,14 @@ export default function AdminQuestionsPage() {
   const [loading, setLoading] = useState(true)
   const [exam, setExam] = useState('')
   const [showForm, setShowForm] = useState(false)
-  const [mode, setMode] = useState<'single' | 'bulk'>('single')
+  const [mode, setMode] = useState<'single' | 'bulk' | 'image'>('single')
   const [form, setForm] = useState(EMPTY)
   const [bulkJson, setBulkJson] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [ocrImage, setOcrImage] = useState<string | null>(null)
+  const [ocrLoading, setOcrLoading] = useState(false)
+  const [ocrError, setOcrError] = useState<string | null>(null)
 
   const fetchQuestions = async () => {
     setLoading(true)
@@ -75,6 +78,38 @@ export default function AdminQuestionsPage() {
     if (!confirm('Delete this question?')) return
     await fetch('/api/admin/questions', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     setQuestions(p => p.filter(q => q.id !== id))
+  }
+
+  const handleFile = async (file: File) => {
+    if (!file) return
+    setOcrError(null)
+    setOcrLoading(true)
+    setMessage(null)
+    try {
+      const reader = new FileReader()
+      reader.onload = async () => {
+        const dataUrl = reader.result as string
+        setOcrImage(dataUrl)
+        const res = await fetch('/api/admin/questions/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: dataUrl }),
+        })
+        const data = await res.json()
+        if (data.question) {
+          setForm(prev => ({ ...prev, ...data.question }))
+          setMode('single')
+        } else {
+          setOcrError(data.error || 'Could not read the question from that image.')
+        }
+        setOcrLoading(false)
+      }
+      reader.onerror = () => { setOcrLoading(false); setOcrError('Failed to read the image file.') }
+      reader.readAsDataURL(file)
+    } catch {
+      setOcrLoading(false)
+      setOcrError('Failed to upload the image.')
+    }
   }
 
   return (
@@ -138,10 +173,50 @@ export default function AdminQuestionsPage() {
               <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer' }}><X size={20} /></button>
             </div>
 
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
               <button onClick={() => setMode('single')} style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${mode === 'single' ? C.accent : C.border}`, background: mode === 'single' ? `${C.accent}1E` : 'transparent', color: mode === 'single' ? C.accent : C.muted, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Single question</button>
               <button onClick={() => setMode('bulk')} style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${mode === 'bulk' ? C.cyan : C.border}`, background: mode === 'bulk' ? `${C.cyan}18` : 'transparent', color: mode === 'bulk' ? C.cyan : C.muted, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Bulk import (JSON)</button>
+              <button onClick={() => setMode('image')} style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${mode === 'image' ? C.gold : C.border}`, background: mode === 'image' ? `${C.gold}18` : 'transparent', color: mode === 'image' ? C.gold : C.muted, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Camera size={14} />Snap from image
+              </button>
             </div>
+
+            {mode === 'image' && (
+              <>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 5 }}>
+                    Take a photo or upload a question image
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, background: C.card, border: `1px dashed ${C.border}`, borderRadius: 12, padding: '28px 20px', cursor: 'pointer', textAlign: 'center' }}>
+                    <input type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }} />
+                    {ocrLoading ? (
+                      <>
+                        <Sparkles size={22} color={C.gold} />
+                        <span style={{ fontSize: 13, color: C.text }}>Reading question with AI...</span>
+                      </>
+                    ) : ocrImage ? (
+                      <>
+                        <img src={ocrImage} alt="Captured question" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8 }} />
+                        <span style={{ fontSize: 12, color: C.muted }}>Click to choose a different image</span>
+                      </>
+                    ) : (
+                      <>
+                        <Camera size={24} color={C.gold} />
+                        <span style={{ fontSize: 13, color: C.text }}>Snap a photo of the question</span>
+                        <span style={{ fontSize: 11, color: C.muted }}>The AI will extract the question, options and answer for you to review</span>
+                      </>
+                    )}
+                  </label>
+                </div>
+                {ocrError && <div style={{ padding: '10px 14px', background: `${C.red}15`, border: `1px solid ${C.red}33`, borderRadius: 8, marginBottom: 12, fontSize: 13, color: C.red }}>{ocrError}</div>}
+                {!ocrLoading && ocrImage && (
+                  <button onClick={() => { setOcrImage(null); setForm(EMPTY) }} style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.text, padding: '11px', borderRadius: 9, fontSize: 14, cursor: 'pointer', width: '100%' }}>
+                    Cancel
+                  </button>
+                )}
+              </>
+            )}
 
             {mode === 'single' && (
               <>

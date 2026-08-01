@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trophy, Eye, Check, X } from 'lucide-react'
+import { Trophy, Eye, Check, X, Sparkles } from 'lucide-react'
 
 interface ReviewItem {
   question_text: string
@@ -18,6 +18,10 @@ export default function QuizResultPage() {
   const [result, setResult] = useState<{ exam: string; subject: string; score: number; total: number; time_spent: number } | null>(null)
   const [review, setReview] = useState<ReviewItem[]>([])
   const [showReview, setShowReview] = useState(false)
+  const [aiExplanations, setAiExplanations] = useState<string[] | null>(null)
+  const [explainLoading, setExplainLoading] = useState(false)
+  const [explainError, setExplainError] = useState<string | null>(null)
+  const [isPremium, setIsPremium] = useState(false)
 
   useEffect(() => {
     const stored = sessionStorage.getItem('quiz_result')
@@ -30,6 +34,28 @@ export default function QuizResultPage() {
     const storedReview = sessionStorage.getItem('quiz_review')
     if (storedReview) setReview(JSON.parse(storedReview))
   }, [])
+
+  const generateExplanations = async () => {
+    setExplainLoading(true)
+    setExplainError(null)
+    try {
+      const res = await fetch('/api/quiz/explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions: review }),
+      })
+      const data = await res.json()
+      if (data.explanations) {
+        setAiExplanations(data.explanations)
+        setIsPremium(!!data.is_premium)
+      } else {
+        setExplainError(data.error || 'Failed to generate explanations. Please try again.')
+      }
+    } catch {
+      setExplainError('Something went wrong. Please try again.')
+    }
+    setExplainLoading(false)
+  }
 
   if (!result) return null
 
@@ -61,16 +87,29 @@ export default function QuizResultPage() {
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
           {review.length > 0 && (
-            <button
-              onClick={() => setShowReview(s => !s)}
-              style={{
-                background: 'transparent', border: '1px solid #1E1450', color: '#E2D9F3',
-                padding: '12px 24px', borderRadius: 9, fontSize: 14, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 7,
-              }}
-            >
-              <Eye size={15} />{showReview ? 'Hide review' : 'Review answers'}
-            </button>
+            <>
+              <button
+                onClick={() => setShowReview(s => !s)}
+                style={{
+                  background: 'transparent', border: '1px solid #1E1450', color: '#E2D9F3',
+                  padding: '12px 24px', borderRadius: 9, fontSize: 14, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 7,
+                }}
+              >
+                <Eye size={15} />{showReview ? 'Hide review' : 'Review answers'}
+              </button>
+              <button
+                onClick={generateExplanations}
+                disabled={explainLoading}
+                style={{
+                  background: 'linear-gradient(135deg,#06B6D4,#7C3AED)', border: 'none', color: '#fff',
+                  padding: '12px 24px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: explainLoading ? 'default' : 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 7,
+                }}
+              >
+                <Sparkles size={15} />{explainLoading ? 'Explaining...' : aiExplanations ? 'Regenerate explanations' : 'Explain with AI'}
+              </button>
+            </>
           )}
           <button
             onClick={retry}
@@ -92,6 +131,32 @@ export default function QuizResultPage() {
           </button>
         </div>
       </div>
+
+      {explainError && (
+        <div style={{ background: '#150D40', border: '1px solid #EF444444', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#EF4444' }}>
+          {explainError}
+        </div>
+      )}
+
+      {aiExplanations && (
+        <div style={{ background: '#110836', border: '1px solid #06B6D433', borderRadius: 14, padding: 18, marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <Sparkles size={16} color="#06B6D4" />
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>AI Explanations</span>
+          </div>
+          <div style={{ fontSize: 12, color: '#7B6FA0', marginBottom: 4 }}>
+            {isPremium
+              ? 'Premium depth — full step-by-step breakdowns for every question.'
+              : 'Brief explanations. Upgrade to Premium for deep, step-by-step breakdowns.'}
+          </div>
+          {!isPremium && (
+            <button onClick={() => router.push('/settings')}
+              style={{ background: 'none', border: 'none', color: '#F59E0B', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, marginBottom: 8 }}>
+              Upgrade to Premium ⚡
+            </button>
+          )}
+        </div>
+      )}
 
       {showReview && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -120,6 +185,14 @@ export default function QuizResultPage() {
                 <div style={{ marginTop: 10, background: '#06B6D412', border: '1px solid #06B6D422', borderRadius: 8, padding: 12 }}>
                   <div style={{ fontSize: 11, color: '#06B6D4', fontWeight: 700, marginBottom: 4 }}>EXPLANATION</div>
                   <p style={{ fontSize: 13, color: '#E2D9F3', lineHeight: 1.6, margin: 0 }}>{item.explanation}</p>
+                </div>
+              )}
+              {aiExplanations && aiExplanations[i] && (
+                <div style={{ marginTop: 10, background: '#7C3AED18', border: '1px solid #7C3AED33', borderRadius: 8, padding: 12 }}>
+                  <div style={{ fontSize: 11, color: '#A78BFA', fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Sparkles size={12} />AI EXPLANATION {!isPremium && <span style={{ fontWeight: 500, color: '#7B6FA0' }}>(brief — upgrade for deep breakdown)</span>}
+                  </div>
+                  <p style={{ fontSize: 13, color: '#E2D9F3', lineHeight: 1.6, margin: 0 }}>{aiExplanations[i]}</p>
                 </div>
               )}
             </div>

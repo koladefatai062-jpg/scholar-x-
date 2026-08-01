@@ -26,13 +26,13 @@ export default function ActiveQuizPage() {
   const [answered, setAnswered] = useState(false)
   const [correctOption, setCorrectOption] = useState<string | null>(null)
   const [explanation, setExplanation] = useState<string | null>(null)
-  const [score, setScore] = useState(0)
   const [time, setTime] = useState(45)
   const [loading, setLoading] = useState(false)
   const [checkError, setCheckError] = useState(false)
   const [startTime] = useState(Date.now())
   const answersRef = useRef<any[]>([])
   const reviewRef = useRef<any[]>([])
+  const scoreRef = useRef(0)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -79,7 +79,9 @@ export default function ActiveQuizPage() {
       const data = await res.json()
       setCorrectOption(data.correct_option)
       setExplanation(data.explanation)
-      if (data.is_correct) setScore(s => s + 1)
+      if (data.is_correct) {
+        scoreRef.current += 1
+      }
 
       answersRef.current.push({
         question_id: q.id,
@@ -120,7 +122,7 @@ export default function ActiveQuizPage() {
     const result = {
       exam: meta.exam,
       subject: meta.subject,
-      score,
+      score: scoreRef.current,
       total: questions.length,
       time_spent: timeSpent,
     }

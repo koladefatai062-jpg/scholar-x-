@@ -53,6 +53,33 @@ function extractJson(text: string): any {
   }
 }
 
+// Fallback parser: explanations formatted as "1. text", "2. text" on separate
+// lines. Handles multi-line explanations by accumulating until the next number.
+function extractNumbered(text: string, startIndex: number, count: number): (string | null)[] {
+  const out: (string | null)[] = new Array(count).fill(null)
+  const lines = text.split(/\r?\n/)
+  let current = -1
+  const acc: string[] = []
+  for (const line of lines) {
+    const m = line.trim().match(/^(\d+)[.)]\s+(.*)$/)
+    if (m) {
+      const idx = Number(m[1]) - startIndex - 1
+      if (current !== -1 && acc.length) out[current] = acc.join('\n').trim()
+      if (idx >= 0 && idx < count) {
+        current = idx
+        acc.length = 0
+        acc.push(m[2])
+      } else {
+        current = -1
+      }
+    } else if (current !== -1 && line.trim()) {
+      acc.push(line.trim())
+    }
+  }
+  if (current !== -1 && acc.length) out[current] = acc.join('\n').trim()
+  return out
+}
+
 async function explainBatch(batch: any[], startIndex: number, isPremium: boolean, level: string, role: string): Promise<(string | null)[]> {
   const depthInstruction = isPremium
     ? `Give a THOROUGH, in-depth explanation (4-8 sentences): why the correct option is right, why each wrong option is wrong, any formula or step-by-step working, the most common mistake students make, and a quick exam tip.`
@@ -67,12 +94,17 @@ async function explainBatch(batch: any[], startIndex: number, isPremium: boolean
 
 ${depthInstruction}
 
-Answer as a JSON array where each element is { "i": <question index>, "explanation": "<the explanation text>" }. Include one element for every question.
+For EACH question below, write its explanation on its own line, formatted exactly as:
+{question number}. {explanation}
+
+Example:
+1. The correct option is B because ...
+2. Option A is wrong because ...
 
 Questions:
 ${questionList}
 
-Return ONLY the JSON array. No markdown, no commentary.`
+Write all ${batch.length} explanations, numbered ${startIndex + 1} through ${startIndex + batch.length}. Return ONLY the numbered lines. No markdown, no headings, no extra text.`
 
   const body = {
     system_instruction: { parts: [{ text: 'You are ScholarX AI Tutor.' }] },
@@ -85,13 +117,19 @@ Return ONLY the JSON array. No markdown, no commentary.`
         const result = await geminiRequest(model, body)
         if (result.error) continue
         const text = result.candidates?.[0]?.content?.parts?.[0]?.text || ''
-        const parsed = extractJson(text)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return batch.map((_, i) => {
-            const match = parsed.find((p: any) => Number(p.i) === startIndex + i + 1)
+        if (!text.trim()) continue
+
+        const jsonParsed = extractJson(text)
+        if (Array.isArray(jsonParsed) && jsonParsed.length > 0) {
+          const mapped = batch.map((_, i) => {
+            const match = jsonParsed.find((p: any) => Number(p.i) === startIndex + i + 1)
             return match?.explanation || ''
           })
+          if (mapped.some(e => e)) return mapped
         }
+
+        const numbered = extractNumbered(text, startIndex, batch.length)
+        if (numbered.some(e => e)) return numbered
       } catch {
         // try next model
       }

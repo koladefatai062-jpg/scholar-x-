@@ -48,6 +48,7 @@ export default function QuizResultPage() {
       if (data.explanations) {
         setAiExplanations(data.explanations)
         setIsPremium(!!data.is_premium)
+        setShowReview(true)
       } else {
         setExplainError(data.error || 'Failed to generate explanations. Please try again.')
       }

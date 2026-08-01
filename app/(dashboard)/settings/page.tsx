@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, Lock, Bell, CreditCard, Info, LogOut, ChevronRight, Check, X, Zap } from 'lucide-react'
+import { User, Lock, Bell, CreditCard, Info, LogOut, ChevronRight, Check, X, Zap, ShieldCheck } from 'lucide-react'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40',
@@ -70,7 +70,9 @@ export default function SettingsPage() {
         setFullName(data.user.full_name || '')
         setLevel(data.user.level || '')
       }
-    } catch {}
+    } catch (err) {
+      console.error('Failed to load profile:', err)
+    }
     setLoading(false)
   }
 
@@ -88,7 +90,9 @@ export default function SettingsPage() {
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
       }
-    } catch {}
+    } catch (err) {
+      console.error('Failed to save profile:', err)
+    }
     setSaving(false)
   }
 
@@ -138,7 +142,9 @@ export default function SettingsPage() {
     try {
       await fetch('/api/settings', { method: 'DELETE' })
       router.push('/')
-    } catch {}
+    } catch (err) {
+      console.error('Failed to delete account:', err)
+    }
   }
 
   const initials = user?.full_name
@@ -199,6 +205,26 @@ export default function SettingsPage() {
           {saved ? <><Check size={15} />Saved!</> : saving ? 'Saving...' : 'Save changes'}
         </button>
       </div>
+
+      {/* Admin section */}
+      {user?.role === 'admin' && (
+        <div style={{ background: C.card, border: `1px solid ${C.cyan}44`, borderRadius: 14, padding: 20, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <ShieldCheck size={15} color={C.cyan} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: 1 }}>Admin</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.white, marginBottom: 4 }}>Admin dashboard</div>
+              <div style={{ fontSize: 13, color: C.muted }}>Manage questions, library, news, opportunities, groups and users.</div>
+            </div>
+            <button onClick={() => router.push('/admin')}
+              style={{ background: `linear-gradient(135deg,${C.cyan},${C.accent})`, border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap' }}>
+              <ShieldCheck size={15} />Go to Admin Dashboard
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Plan section */}
       <div style={{ background: user?.is_premium ? `linear-gradient(160deg,${C.accent}15,${C.card})` : C.card, border: `1px solid ${user?.is_premium ? C.accent + '44' : C.border}`, borderRadius: 14, padding: 20, marginBottom: 16 }}>
@@ -317,6 +343,22 @@ export default function SettingsPage() {
             <span style={{ fontSize: 13, color: C.muted }}>{value}</span>
           </div>
         ))}
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 8 }}>FOLLOW US</div>
+          {[
+            ['Instagram', 'https://instagram.com/scholarx'],
+            ['X (Twitter)', 'https://x.com/scholarx'],
+            ['WhatsApp', 'https://wa.me/2348000000000'],
+            ['TikTok', 'https://tiktok.com/@scholarx'],
+            ['Email', 'mailto:hello@scholarx.com'],
+          ].map(([label, url]) => (
+            <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${C.border}`, color: C.text, textDecoration: 'none', fontSize: 14 }}>
+              <span>{label}</span>
+              <span style={{ fontSize: 12, color: C.cyan }}>{url.replace('https://', '')}</span>
+            </a>
+          ))}
+        </div>
       </div>
 
       {/* Logout */}

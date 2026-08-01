@@ -70,7 +70,9 @@ export default function LibraryPage() {
       const res = await fetch('/api/library/save')
       const data = await res.json()
       setSavedIds(data.savedIds || [])
-    } catch {}
+    } catch (err) {
+      console.error('Failed to load saved items:', err)
+    }
   }
 
   const toggleSave = async (itemId: string, isPremiumItem: boolean) => {
@@ -87,7 +89,9 @@ export default function LibraryPage() {
       } else {
         setSavedIds(prev => prev.filter(id => id !== itemId))
       }
-    } catch {}
+    } catch (err) {
+      console.error('Failed to toggle save:', err)
+    }
   }
 
   const handleSearch = (e: React.FormEvent) => {

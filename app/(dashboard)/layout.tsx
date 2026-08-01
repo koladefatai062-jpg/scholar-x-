@@ -31,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
-  const [user, setUser] = useState<{ full_name?: string; email?: string; is_premium?: boolean } | null>(null)
+  const [user, setUser] = useState<{ full_name?: string; email?: string; is_premium?: boolean; role?: string } | null>(null)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -49,16 +49,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const res = await fetch('/api/auth/me')
       const data = await res.json()
       if (data.user) setUser(data.user)
-    } catch {}
+    } catch (err) {
+      console.error('Failed to load user:', err)
+    }
   }
 
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
-      router.push('/')
-    } catch {
-      router.push('/')
+    } catch (err) {
+      console.error('Logout failed:', err)
     }
+    router.push('/')
   }
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/')
@@ -118,6 +120,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </button>
               )
             })}
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => router.push('/admin')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', borderRadius: 9, border: 'none',
+                  background: isActive('/admin') ? `${C.cyan}22` : 'transparent',
+                  color: isActive('/admin') ? C.cyan : C.muted,
+                  fontSize: 14, fontWeight: isActive('/admin') ? 700 : 500,
+                  cursor: 'pointer', textAlign: 'left', width: '100%',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <GraduationCap size={16} />
+                Admin Panel
+                {isActive('/admin') && <ChevronRight size={13} style={{ marginLeft: 'auto' }} />}
+              </button>
+            )}
           </nav>
 
           <div style={{ padding: '10px 10px 16px', borderTop: `1px solid ${C.border}` }}>
@@ -212,6 +232,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </button>
                 )
               })}
+              {user?.role === 'admin' && (
+                <button
+                  onClick={() => { router.push('/admin'); setMobileMenuOpen(false) }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '12px 14px', borderRadius: 9, border: 'none',
+                    background: isActive('/admin') ? `${C.cyan}22` : 'transparent',
+                    color: isActive('/admin') ? C.cyan : C.muted,
+                    fontSize: 15, fontWeight: isActive('/admin') ? 700 : 500,
+                    cursor: 'pointer', textAlign: 'left', width: '100%',
+                  }}
+                >
+                  <GraduationCap size={17} />Admin Panel
+                </button>
+              )}
             </nav>
 
             <div style={{ padding: '10px 10px 20px', borderTop: `1px solid ${C.border}` }}>

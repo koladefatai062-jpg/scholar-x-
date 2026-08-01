@@ -4,10 +4,9 @@ import https from 'https'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 const DEFAULT_GEMINI_MODELS = [
-  process.env.GEMINI_MODEL || 'gemini-2.0-flash',
-  'gemini-2.0-flash-exp',
-  'gemini-1.5-flash-latest',
-  'gemini-1.5-flash',
+  process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-3-flash',
 ]
 const FREE_DAILY_LIMIT = 10
 
@@ -159,29 +158,19 @@ export async function POST(request: NextRequest) {
         const result = await geminiRequest(modelName, geminiBody)
 
         if (result.error) {
-          const errMsg = result.error.message || JSON.stringify(result.error)
-          if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota')) {
-            lastError = new Error(errMsg)
-            continue
-          }
-          throw new Error(errMsg)
+          lastError = new Error(result.error.message || JSON.stringify(result.error))
+          continue
         }
 
         reply = result.candidates?.[0]?.content?.parts?.[0]?.text || ''
         if (reply) break
       } catch (error) {
         lastError = error
-        const message = error instanceof Error ? error.message : String(error)
-        if (message.includes('429') || message.includes('RESOURCE_EXHAUSTED') || message.includes('quota')) {
-          continue
-        }
-        if (!message.includes('404') && !message.includes('not found') && !message.includes('unsupported')) {
-          throw error
-        }
       }
     }
 
     if (!reply) {
+      console.error('AI tutor: all Gemini models failed.', lastError)
       throw lastError || new Error('No Gemini response received')
     }
 

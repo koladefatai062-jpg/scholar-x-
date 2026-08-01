@@ -29,8 +29,10 @@ export default function ActiveQuizPage() {
   const [score, setScore] = useState(0)
   const [time, setTime] = useState(45)
   const [loading, setLoading] = useState(false)
+  const [checkError, setCheckError] = useState(false)
   const [startTime] = useState(Date.now())
   const answersRef = useRef<any[]>([])
+  const reviewRef = useRef<any[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -84,8 +86,18 @@ export default function ActiveQuizPage() {
         selected_option: optionKey,
         is_correct: data.is_correct,
       })
-    } catch {
-      // fail silently, still let them continue
+
+      reviewRef.current.push({
+        question_text: q.question_text,
+        options: q.options,
+        selected: optionKey,
+        correct: data.correct_option,
+        explanation: data.explanation,
+        is_correct: data.is_correct,
+      })
+    } catch (err) {
+      console.error('Failed to check answer:', err)
+      setCheckError(true)
     }
     setLoading(false)
   }
@@ -113,6 +125,7 @@ export default function ActiveQuizPage() {
       time_spent: timeSpent,
     }
     sessionStorage.setItem('quiz_result', JSON.stringify(result))
+    sessionStorage.setItem('quiz_review', JSON.stringify(reviewRef.current))
 
     try {
       await fetch('/api/quiz/submit', {
@@ -120,8 +133,8 @@ export default function ActiveQuizPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...result, answers: answersRef.current }),
       })
-    } catch {
-      // attempt save failed silently — result still shown to user
+    } catch (err) {
+      console.error('Failed to save quiz attempt:', err)
     }
   }
 
@@ -197,6 +210,12 @@ export default function ActiveQuizPage() {
           )
         })}
       </div>
+
+      {checkError && (
+        <div style={{ background: '#EF444418', border: '1px solid #EF444433', borderRadius: 10, padding: 14, marginBottom: 20, fontSize: 13, color: '#EF4444' }}>
+          Could not verify that answer. Your score may not reflect it — please check your connection and try the next question.
+        </div>
+      )}
 
       {answered && explanation && (
         <div style={{ background: '#7C3AED12', border: '1px solid #7C3AED33', borderRadius: 10, padding: 16, marginBottom: 20 }}>

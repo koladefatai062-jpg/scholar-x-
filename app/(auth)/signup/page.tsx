@@ -51,9 +51,13 @@ export default function SignupPage() {
     })
     if (error) { setError(error.message); setLoading(false); return }
 
-    // Update role and level in users table
+    // Create/update the user's profile row server-side (bypasses RLS)
     if (data.user) {
-      await supabase.from('users').update({ role, level, full_name: fullName }).eq('id', data.user.id)
+      await fetch('/api/auth/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: data.user.id, full_name: fullName, role, level }),
+      })
     }
     setStep(3)
     setLoading(false)

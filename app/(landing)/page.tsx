@@ -188,6 +188,22 @@ export default function LandingPage() {
           </div>
           <span style={{ fontWeight: 800, fontSize: 18, color: C.white }}>Scholar<span style={{ background: `linear-gradient(90deg,${C.accent},${C.cyan})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>X</span></span>
         </div>
+        <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
+          {[
+            ['Instagram', 'https://instagram.com/scholarx'],
+            ['X', 'https://x.com/scholarx'],
+            ['WhatsApp', 'https://wa.me/2348000000000'],
+            ['TikTok', 'https://tiktok.com/@scholarx'],
+            ['Email', 'mailto:hello@scholarx.com'],
+          ].map(([label, url]) => (
+            <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+              style={{ color: C.muted, fontSize: 13, textDecoration: 'none', fontWeight: 600 }}
+              onMouseEnter={e => e.currentTarget.style.color = C.accent}
+              onMouseLeave={e => e.currentTarget.style.color = C.muted}>
+              {label}
+            </a>
+          ))}
+        </div>
         <p style={{ color: C.muted, fontSize: 13 }}>© 2025 ScholarX. Built for Nigerian students.</p>
       </footer>
     </div>

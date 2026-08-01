@@ -26,6 +26,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [authorized, setAuthorized] = useState(false)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -33,6 +34,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user?.role === 'admin') {
+          setAuthorized(true)
+        } else {
+          router.replace('/dashboard')
+        }
+      })
+      .catch(err => {
+        console.error('Admin check failed:', err)
+        router.replace('/login')
+      })
+  }, [router])
+
+  if (!authorized) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: C.bg, color: C.muted, fontSize: 14 }}>
+        Checking access...
+      </div>
+    )
+  }
 
   const isActive = (path: string) => path === '/admin' ? pathname === '/admin' : pathname.startsWith(path)
 

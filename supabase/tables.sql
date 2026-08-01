@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   level TEXT DEFAULT 'ss1',
   role TEXT DEFAULT 'secondary' CHECK (role IN ('secondary', 'university', 'admin')),
   is_premium BOOLEAN DEFAULT false,
+  premium_expires_at TIMESTAMPTZ,
   avatar_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );

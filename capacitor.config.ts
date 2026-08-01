@@ -6,8 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     androidScheme: 'https',
-    url: 'http://10.0.2.2:3000',
-    cleartext: true,
+    url: 'https://scholarx.vercel.app',
+    cleartext: false,
   },
   plugins: {
     SplashScreen: {

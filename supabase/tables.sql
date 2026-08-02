@@ -229,6 +229,7 @@ CREATE TABLE IF NOT EXISTS ai_conversations (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   messages JSONB DEFAULT '[]',
+  title TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -361,14 +362,17 @@ DROP POLICY IF EXISTS "ai_usage_insert_own" ON ai_usage;
 CREATE POLICY "ai_usage_insert_own" ON ai_usage FOR INSERT WITH CHECK (auth.uid() = user_id);
 DROP POLICY IF EXISTS "ai_usage_update_own" ON ai_usage;
 CREATE POLICY "ai_usage_update_own" ON ai_usage FOR UPDATE USING (auth.uid() = user_id);
-
 DROP POLICY IF EXISTS "ai_conv_select_own" ON ai_conversations;
 CREATE POLICY "ai_conv_select_own" ON ai_conversations FOR SELECT USING (auth.uid() = user_id);
+
 DROP POLICY IF EXISTS "ai_conv_insert_own" ON ai_conversations;
 CREATE POLICY "ai_conv_insert_own" ON ai_conversations FOR INSERT WITH CHECK (auth.uid() = user_id);
+
 DROP POLICY IF EXISTS "ai_conv_update_own" ON ai_conversations;
 CREATE POLICY "ai_conv_update_own" ON ai_conversations FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "ai_conv_delete_own" ON ai_conversations;
+CREATE POLICY "ai_conv_delete_own" ON ai_conversations FOR DELETE USING (auth.uid() = user_id);
 -- ============================================================
 -- RPC functions (counters)
 -- ============================================================

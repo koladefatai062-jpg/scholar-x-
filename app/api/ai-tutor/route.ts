@@ -187,17 +187,35 @@ export async function POST(request: NextRequest) {
   const level = profile.level || 'SS3'
   const systemPrompt = getSystemPrompt(role, level)
 
+  let convId: string | null = conversation_id || null
+  if (!convId) {
+    const firstText = String(messages[0]?.content || '').trim().slice(0, 50)
+    try {
+      const { data: newConv } = await supabase
+        .from('ai_conversations')
+        .insert({ user_id: user.id, messages: [], title: firstText || 'New chat' })
+        .select('id')
+        .single()
+      convId = newConv?.id || null
+    } catch {}
+  }
+
   const saveAssistantMessage = async (content: string, image?: { mimeType: string; data: string } | null) => {
-    if (!conversation_id) return
+    if (!convId) return
     try {
       const updatedMessages = [
         ...messages,
         { role: 'assistant', content, image: image || null, timestamp: new Date().toISOString() },
       ]
+      const firstText = String(messages[0]?.content || '').trim().slice(0, 50)
       await supabase
         .from('ai_conversations')
-        .update({ messages: updatedMessages, updated_at: new Date().toISOString() })
-        .eq('id', conversation_id)
+        .update({
+          messages: updatedMessages,
+          updated_at: new Date().toISOString(),
+          ...(firstText ? { title: firstText } : {}),
+        })
+        .eq('id', convId)
         .eq('user_id', user.id)
     } catch {}
   }
@@ -266,11 +284,11 @@ export async function POST(request: NextRequest) {
 
           if (image) {
             await saveAssistantMessage(replyText, image)
-            return NextResponse.json({ reply: replyText, image, remaining: await computeRemaining() })
+            return NextResponse.json({ reply: replyText, image, conversation_id: convId, remaining: await computeRemaining() })
           }
           if (replyText) {
             await saveAssistantMessage(replyText)
-            return NextResponse.json({ reply: replyText, remaining: await computeRemaining() })
+            return NextResponse.json({ reply: replyText, conversation_id: convId, remaining: await computeRemaining() })
           }
           lastError = new Error('No image returned from model')
         } catch (error) {
@@ -281,7 +299,7 @@ export async function POST(request: NextRequest) {
       console.error('AI tutor: image generation failed.', lastError)
       const replyText = `Hmm, I couldn't generate that image right now — my image service is having a moment (quota/limit). No wahala! I can still explain concepts, solve questions, or read a photo you upload. Try again in a bit, or ask me to explain the thing instead.`
       await saveAssistantMessage(replyText)
-      return NextResponse.json({ reply: replyText, image: null, remaining: await computeRemaining() })
+      return NextResponse.json({ reply: replyText, image: null, conversation_id: convId, remaining: await computeRemaining() })
     }
 
     // ---- TEXT + VISION path ----
@@ -322,7 +340,7 @@ export async function POST(request: NextRequest) {
 
     await saveAssistantMessage(reply)
 
-    return NextResponse.json({ reply, remaining: await computeRemaining() })
+    return NextResponse.json({ reply, conversation_id: convId, remaining: await computeRemaining() })
 
   } catch (err: any) {
     console.error('Gemini error:', err)
@@ -332,7 +350,7 @@ export async function POST(request: NextRequest) {
       level
     )
     await saveAssistantMessage(fallbackReply)
-    return NextResponse.json({ reply: fallbackReply, fallback: true, remaining: null }, { status: 200 })
+    return NextResponse.json({ reply: fallbackReply, fallback: true, conversation_id: convId, remaining: null }, { status: 200 })
   }
 }
 
@@ -347,35 +365,37 @@ export async function GET(request: NextRequest) {
     .eq('id', user.id)
     .single()
 
-  const today = new Date().toISOString().split('T')[0]
+  const url = new URL(request.url)
+  const id = url.searchParams.get('id')
 
   let conversation: any = null
   try {
-    let result = await supabase
-      .from('ai_conversations')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('created_at', today)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-    conversation = result.data
-  } catch {}
-
-  if (!conversation) {
-    try {
-      const { data: newConv } = await supabase
+    if (id) {
+      const result = await supabase
         .from('ai_conversations')
-        .insert({ user_id: user.id, messages: [] })
-        .select()
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', user.id)
         .single()
-      conversation = newConv
-    } catch {}
-  }
+      conversation = result.data || null
+    } else {
+      const today = new Date().toISOString().split('T')[0]
+      const result = await supabase
+        .from('ai_conversations')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('created_at', today)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      conversation = result.data || null
+    }
+  } catch {}
 
   let remaining = null
   if (!profile?.is_premium) {
     try {
+      const today = new Date().toISOString().split('T')[0]
       const { data: usage } = await supabase
         .from('ai_usage')
         .select('count')
@@ -386,5 +406,24 @@ export async function GET(request: NextRequest) {
     } catch {}
   }
 
-  return NextResponse.json({ conversation: conversation || { id: null, messages: [] }, remaining, is_premium: profile?.is_premium })
+  return NextResponse.json({ conversation, remaining, is_premium: profile?.is_premium })
+}
+
+export async function DELETE(request: NextRequest) {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const url = new URL(request.url)
+  const id = url.searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+  const { error } = await supabase
+    .from('ai_conversations')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
 }

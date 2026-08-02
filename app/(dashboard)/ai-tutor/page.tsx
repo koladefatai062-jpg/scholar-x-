@@ -16,6 +16,18 @@ interface Message {
   timestamp?: string
   attachments?: Attachment[]
   image?: { mimeType: string; data: string } | null
+  images?: string[]
+}
+
+const renderContent = (text: string) => {
+  const parts = text.split(/(!\[[^\]]*\]\((https?:\/\/[^)\s]+)\))/g)
+  return parts.map((part, idx) => {
+    const m = part.match(/^!\[[^\]]*\]\((https?:\/\/[^)\s]+)\)$/)
+    if (m) {
+      return <img key={idx} src={m[1]} alt="Generated" style={{ display: 'block', maxWidth: 260, maxHeight: 260, borderRadius: 10, margin: '8px 0', objectFit: 'cover' }} />
+    }
+    return part
+  })
 }
 
 interface ConversationItem {
@@ -243,11 +255,12 @@ export default function AITutorPage() {
 
       if (data.conversation_id) setConversationId(data.conversation_id)
 
-      if (data.reply || data.image) {
+      if (data.reply || data.image || data.images) {
         setMessages(prev => [...prev, {
           role: 'assistant',
           content: data.reply || '',
           image: data.image || null,
+          images: data.images || [],
           timestamp: new Date().toISOString(),
         }])
         if (data.remaining !== null) setRemaining(data.remaining)
@@ -459,6 +472,13 @@ export default function AITutorPage() {
                         style={{ display: 'block', maxWidth: '100%', maxHeight: 320, borderRadius: 10, marginBottom: msg.content ? 10 : 0 }}
                       />
                     )}
+                    {msg.images && msg.images.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: msg.content ? 10 : 0 }}>
+                        {msg.images.map((src, ii) => (
+                          <img key={ii} src={src} alt="Generated" style={{ display: 'block', maxWidth: '100%', maxHeight: 320, borderRadius: 10 }} />
+                        ))}
+                      </div>
+                    )}
                     {msg.attachments && msg.attachments.length > 0 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: msg.content ? 8 : 0 }}>
                         {msg.attachments.map((a, ai) => (
@@ -480,7 +500,7 @@ export default function AITutorPage() {
                     )}
                     {msg.content && (
                       <p style={{ fontSize: 14, color: '#E2D9F3', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>
-                        {msg.content}
+                        {renderContent(msg.content)}
                       </p>
                     )}
                   </div>

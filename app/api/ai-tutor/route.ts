@@ -130,7 +130,7 @@ Your job:
 - Never just give an answer — always explain the reasoning
 - MATHEMATICS: always give full step-by-step working, write the formula/rule first, use clear plain-text notation (x^2, sqrt(), a/b, ×, ÷, ≈, π, ≤, ≥), and always finish with the final answer on its own line like "Answer: ...". Verify by substituting back when possible.
 - When the student sends an image, read it carefully and explain/answer based on what you see
-- When asked to generate an image, you are the image-generation mode and must create the picture`
+- IMAGE GENERATION: when asked to generate an image, you are in image-generation mode — you must output the actual generated image, with at most a short one-line caption. NEVER reply with links or stock-photo URLs, and never say you are "text-based". If you cannot output an image, say so briefly and offer to explain the topic instead.`
 }
 
 function getFallbackReply(message: string, role: string, level: string) {
@@ -224,12 +224,12 @@ export async function POST(request: NextRequest) {
     } catch {}
   }
 
-  const saveAssistantMessage = async (content: string, image?: { mimeType: string; data: string } | null) => {
+  const saveAssistantMessage = async (content: string, image?: { mimeType: string; data: string } | null, images?: string[]) => {
     if (!convId) return
     try {
       const updatedMessages = [
         ...messages,
-        { role: 'assistant', content, image: image || null, timestamp: new Date().toISOString() },
+        { role: 'assistant', content, image: image || null, images: images || [], timestamp: new Date().toISOString() },
       ]
       const firstText = String(messages[0]?.content || '').trim().slice(0, 50)
       await supabase
@@ -312,6 +312,18 @@ export async function POST(request: NextRequest) {
             await saveAssistantMessage(replyText, image)
             return NextResponse.json({ reply: replyText, image, conversation_id: convId, remaining: await computeRemaining() })
           }
+
+          const markdownImageUrls = [...replyText.matchAll(/!\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/g)].map(m => m[1])
+          if (markdownImageUrls.length > 0) {
+            const cleaned = replyText
+              .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+              .replace(/\n{3,}/g, '\n\n')
+              .trim()
+            const finalText = cleaned || 'Here you go!'
+            await saveAssistantMessage(finalText, null, markdownImageUrls)
+            return NextResponse.json({ reply: finalText, image: null, images: markdownImageUrls, conversation_id: convId, remaining: await computeRemaining() })
+          }
+
           if (replyText) {
             await saveAssistantMessage(replyText)
             return NextResponse.json({ reply: replyText, conversation_id: convId, remaining: await computeRemaining() })

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   if (existing) {
     // Leave group
     await supabase.from('group_members').delete().eq('id', existing.id)
-    await supabase.rpc('decrement_group_members', { group_id })
+    await supabase.rpc('decrement_group_members', { p_group_id: group_id })
     return NextResponse.json({ joined: false })
   }
 
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
   // Join group
   await supabase.from('group_members').insert({ user_id: user.id, group_id })
-  await supabase.rpc('increment_group_members', { group_id })
+  await supabase.rpc('increment_group_members', { p_group_id: group_id })
 
   return NextResponse.json({ joined: true })
 }

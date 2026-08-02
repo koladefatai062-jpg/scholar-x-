@@ -403,6 +403,41 @@ RETURNS void LANGUAGE sql SECURITY DEFINER AS $$
 $$;
 
 -- ============================================================
+-- Realtime: publish community tables so feed + group chat update live
+-- ============================================================
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE posts;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE post_likes;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE comments;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE groups;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE group_members;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE group_messages;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+ALTER TABLE posts REPLICA IDENTITY FULL;
+ALTER TABLE post_likes REPLICA IDENTITY FULL;
+ALTER TABLE comments REPLICA IDENTITY FULL;
+ALTER TABLE groups REPLICA IDENTITY FULL;
+ALTER TABLE group_members REPLICA IDENTITY FULL;
+ALTER TABLE group_messages REPLICA IDENTITY FULL;
+
+-- ============================================================
 -- Auto-create profile on signup
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()

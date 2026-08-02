@@ -409,3 +409,26 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ============================================================
+-- Storage: avatars bucket + policies
+-- ============================================================
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('avatars', 'avatars', true, 2097152, ARRAY['image/png', 'image/jpeg', 'image/webp'])
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "avatars_read" ON storage.objects;
+CREATE POLICY "avatars_read" ON storage.objects
+  FOR SELECT USING (bucket_id = 'avatars');
+
+DROP POLICY IF EXISTS "avatars_insert_own" ON storage.objects;
+CREATE POLICY "avatars_insert_own" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'avatars' AND auth.uid() = (storage.foldername(name))[1]::uuid);
+
+DROP POLICY IF EXISTS "avatars_update_own" ON storage.objects;
+CREATE POLICY "avatars_update_own" ON storage.objects
+  FOR UPDATE USING (bucket_id = 'avatars' AND auth.uid() = (storage.foldername(name))[1]::uuid);
+
+DROP POLICY IF EXISTS "avatars_delete_own" ON storage.objects;
+CREATE POLICY "avatars_delete_own" ON storage.objects
+  FOR DELETE USING (bucket_id = 'avatars' AND auth.uid() = (storage.foldername(name))[1]::uuid);

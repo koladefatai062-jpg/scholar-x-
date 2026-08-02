@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Send, ArrowLeft, Users, Paperclip, Lock } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
+import Avatar from '@/components/Avatar'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40',
@@ -20,7 +21,7 @@ interface Message {
   file_name: string | null
   file_type: string | null
   created_at: string
-  users: { full_name: string; is_premium: boolean }
+  users: { full_name: string; is_premium: boolean; avatar_url: string | null }
 }
 
 interface Group {
@@ -96,7 +97,7 @@ export default function GroupChatPage() {
   const fetchMessages = async () => {
     const { data } = await supabase
       .from('group_messages')
-      .select('*, users(full_name, is_premium)')
+      .select('*, users(full_name, is_premium, avatar_url)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: true })
       .limit(50)
@@ -144,7 +145,7 @@ export default function GroupChatPage() {
   const timeStr = (date: string) => new Date(date).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 60px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: isMobile ? 'calc(100dvh - 140px)' : 'calc(100dvh - 60px)' }}>
       {/* Header */}
       <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, background: C.surface }}>
         <button onClick={() => router.push('/community')} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', padding: 4 }}>
@@ -174,6 +175,7 @@ export default function GroupChatPage() {
             <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start' }}>
               {showName && !isOwn && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, paddingLeft: 4 }}>
+                  <Avatar name={msg.users?.full_name} avatarUrl={msg.users?.avatar_url} size={22} fontSize={10} />
                   <span style={{ fontSize: 12, fontWeight: 700, color: C.accent }}>{msg.users?.full_name || 'Student'}</span>
                   {msg.users?.is_premium && <span style={{ fontSize: 9, padding: '1px 5px', background: `${C.accent}22`, borderRadius: 3, color: C.accent, fontWeight: 700 }}>PRO</span>}
                 </div>

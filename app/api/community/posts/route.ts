@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     .from('posts')
     .select(`
       *,
-      users (full_name, level, is_premium)
+      users (full_name, level, is_premium, avatar_url)
     `)
     .eq('is_flagged', false)
     .order('created_at', { ascending: false })
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
   const { data: post, error } = await supabase
     .from('posts')
     .insert({ user_id: user.id, content: content.trim(), subject })
-    .select(`*, users (full_name, level, is_premium)`)
+    .select(`*, users (full_name, level, is_premium, avatar_url)`)
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

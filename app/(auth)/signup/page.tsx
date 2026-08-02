@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { GraduationCap, Eye, EyeOff, Check } from 'lucide-react'
+import { Eye, EyeOff, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
+import Logo from '@/components/Logo'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40', border: '#1E1450',
@@ -68,13 +69,8 @@ export default function SignupPage() {
       <div style={{ maxWidth: 440, width: '100%' }}>
 
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 40 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg,${C.accent},${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <GraduationCap size={17} color="#fff" />
-          </div>
-          <span style={{ fontWeight: 800, fontSize: 20, color: C.white }}>
-            Scholar<span style={{ background: `linear-gradient(90deg,${C.accent},${C.cyan})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>X</span>
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 40 }}>
+          <Logo size={34} />
         </div>
 
         {/* Step indicator */}

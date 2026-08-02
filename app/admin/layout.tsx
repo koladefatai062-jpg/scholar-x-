@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { BarChart2, HelpCircle, BookOpen, Newspaper, Briefcase, Users, LayoutDashboard, LogOut, Menu, X, GraduationCap } from 'lucide-react'
+import { BarChart2, HelpCircle, BookOpen, Newspaper, Briefcase, Users, LayoutDashboard, LogOut, Menu, X } from 'lucide-react'
+import Logo from '@/components/Logo'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40',
@@ -69,14 +70,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const Sidebar = () => (
     <aside style={{ width: 220, background: C.surface, borderRight: `1px solid ${C.border}`, height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg,${C.accent},${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <GraduationCap size={17} color="#fff" />
-          </div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 16, color: C.white }}>ScholarX</div>
-            <div style={{ fontSize: 10, color: C.accent, fontWeight: 700 }}>ADMIN</div>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Logo size={32} />
+          <div style={{ fontSize: 10, color: C.accent, fontWeight: 700 }}>ADMIN</div>
         </div>
       </div>
 

@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  GraduationCap, ArrowRight, ChevronRight, Zap, Target,
+  ArrowRight, ChevronRight, Zap, Target,
   Brain, BookOpen, Users, TrendingUp, Briefcase, Check
 } from 'lucide-react'
+import Logo from '@/components/Logo'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40', border: '#1E1450',
@@ -42,12 +43,7 @@ export default function LandingPage() {
       <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'rgba(10,6,40,0.94)', backdropFilter: 'blur(14px)', borderBottom: `1px solid ${C.border}`, padding: '0 24px' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg,${C.accent},${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <GraduationCap size={17} color="#fff" />
-            </div>
-            <span style={{ fontWeight: 800, fontSize: 20, color: C.white, letterSpacing: '-0.5px' }}>
-              Scholar<span style={{ background: `linear-gradient(90deg,${C.accent},${C.cyan})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>X</span>
-            </span>
+            <Logo size={32} />
           </div>
           <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
             <button onClick={() => router.push('/login')} style={{ background: 'none', border: `1px solid ${C.border}`, color: C.text, padding: '7px 16px', borderRadius: 8, fontSize: 14, cursor: 'pointer' }}>Log in</button>
@@ -183,10 +179,7 @@ export default function LandingPage() {
       {/* FOOTER */}
       <footer style={{ borderTop: `1px solid ${C.border}`, padding: '40px 24px', textAlign: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 7, background: `linear-gradient(135deg,${C.accent},${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <GraduationCap size={15} color="#fff" />
-          </div>
-          <span style={{ fontWeight: 800, fontSize: 18, color: C.white }}>Scholar<span style={{ background: `linear-gradient(90deg,${C.accent},${C.cyan})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>X</span></span>
+          <Logo size={28} />
         </div>
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
           {[

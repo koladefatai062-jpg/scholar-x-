@@ -4,6 +4,10 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'ScholarX — Nigeria\'s Smartest Study Platform',
   description: 'Past questions, AI tutor, study groups and more for Nigerian secondary and university students.',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 }
 
 export const viewport: Viewport = {

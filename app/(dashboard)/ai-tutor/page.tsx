@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Send, Brain, Zap, Lock } from 'lucide-react'
+import Logo from '@/components/Logo'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -27,7 +28,15 @@ export default function AITutorPage() {
   const [isPremium, setIsPremium] = useState(false)
   const [limitReached, setLimitReached] = useState(false)
   const [initializing, setInitializing] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   useEffect(() => {
     initConversation()
@@ -138,14 +147,12 @@ export default function AITutorPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 60px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: isMobile ? 'calc(100dvh - 140px)' : 'calc(100dvh - 60px)' }}>
 
       {/* Header */}
       <div style={{ padding: '16px 24px', borderBottom: '1px solid #1E1450', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Brain size={18} color="#fff" />
-          </div>
+          <Logo size={36} radius={10} />
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>ScholarX AI Tutor</div>
             <div style={{ fontSize: 12, color: '#7B6FA0' }}>Powered by Google Gemini</div>

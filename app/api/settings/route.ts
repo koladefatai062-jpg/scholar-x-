@@ -7,11 +7,16 @@ export async function PATCH(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { full_name, level } = body
+  const { full_name, level, avatar_url } = body
+
+  const updates: Record<string, any> = {}
+  if (full_name !== undefined) updates.full_name = full_name
+  if (level !== undefined) updates.level = level
+  if (avatar_url !== undefined) updates.avatar_url = avatar_url
 
   const { data, error } = await supabase
     .from('users')
-    .update({ full_name, level })
+    .update(updates)
     .eq('id', user.id)
     .select()
     .single()

@@ -7,6 +7,8 @@ import {
   TrendingUp, Settings, LogOut, Menu, X,
   Bell, GraduationCap, ChevronRight
 } from 'lucide-react'
+import Logo from '@/components/Logo'
+import Avatar from '@/components/Avatar'
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard' },
@@ -31,7 +33,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
-  const [user, setUser] = useState<{ full_name?: string; email?: string; is_premium?: boolean; role?: string } | null>(null)
+  const [user, setUser] = useState<{ full_name?: string; email?: string; is_premium?: boolean; role?: string; avatar_url?: string | null } | null>(null)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -70,10 +72,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return item?.label || 'Dashboard'
   }
 
-  const initials = user?.full_name
-    ? user.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'SX'
-
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: C.bg, fontFamily: "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
 
@@ -86,12 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }}>
           <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg,${C.accent},${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <GraduationCap size={17} color="#fff" />
-              </div>
-              <span style={{ fontWeight: 800, fontSize: 18, color: C.white, letterSpacing: '-0.5px' }}>
-                Scholar<span style={{ background: `linear-gradient(90deg,${C.accent},${C.cyan})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>X</span>
-              </span>
+              <Logo size={32} />
             </div>
           </div>
 
@@ -170,9 +163,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <div style={{ marginTop: 12, padding: '10px 12px', background: C.card, borderRadius: 10, border: `1px solid ${C.border}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: `linear-gradient(135deg,${C.accent},${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>{initials}</span>
-                </div>
+                <Avatar name={user?.full_name} avatarUrl={user?.avatar_url} size={32} fontSize={12} />
                 <div style={{ overflow: 'hidden' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.white, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {user?.full_name || 'Student'}
@@ -200,12 +191,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           }}>
             <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 30, height: 30, borderRadius: 8, background: `linear-gradient(135deg,${C.accent},${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <GraduationCap size={15} color="#fff" />
-                </div>
-                <span style={{ fontWeight: 800, fontSize: 17, color: C.white }}>
-                  Scholar<span style={{ background: `linear-gradient(90deg,${C.accent},${C.cyan})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>X</span>
-                </span>
+                <Logo size={30} />
               </div>
               <button onClick={() => setMobileMenuOpen(false)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer' }}>
                 <X size={20} />
@@ -280,8 +266,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Bell size={19} />
               <div style={{ position: 'absolute', top: 2, right: 2, width: 7, height: 7, borderRadius: '50%', background: C.accent }} />
             </button>
-            <div onClick={() => router.push('/settings')} style={{ width: 34, height: 34, borderRadius: '50%', background: `linear-gradient(135deg,${C.accent},${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{initials}</span>
+            <div onClick={() => router.push('/settings')} style={{ cursor: 'pointer', display: 'flex' }}>
+              <Avatar name={user?.full_name} avatarUrl={user?.avatar_url} size={34} fontSize={13} />
             </div>
           </div>
         </header>

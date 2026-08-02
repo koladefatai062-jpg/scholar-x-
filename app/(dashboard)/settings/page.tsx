@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, Lock, Bell, CreditCard, Info, LogOut, ChevronRight, Check, X, Zap, ShieldCheck } from 'lucide-react'
+import { User, Lock, Bell, CreditCard, Info, LogOut, ChevronRight, Check, X, Zap, ShieldCheck, Camera } from 'lucide-react'
+import { createClient } from '@/lib/supabase'
+import Avatar from '@/components/Avatar'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40',
@@ -23,16 +25,20 @@ interface UserProfile {
   is_premium: boolean
   premium_expires_at: string | null
   streak: number
+  avatar_url: string | null
 }
 
 export default function SettingsPage() {
   const router = useRouter()
+  const supabase = createClient()
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [upgrading, setUpgrading] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   // Form state
   const [fullName, setFullName] = useState('')
@@ -96,6 +102,48 @@ export default function SettingsPage() {
     setSaving(false)
   }
 
+  const updateAvatarUrl = async (avatarUrl: string | null) => {
+    const res = await fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ avatar_url: avatarUrl }),
+    })
+    const data = await res.json()
+    if (data.user) setUser(data.user)
+  }
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { alert('Only PNG, JPG or WEBP images allowed'); return }
+    if (file.size > 2 * 1024 * 1024) { alert('Max image size is 2MB'); return }
+
+    setUploadingAvatar(true)
+    try {
+      const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+      const fileName = `${user.id}/${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true })
+      if (uploadError) throw uploadError
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName)
+      await updateAvatarUrl(publicUrl)
+    } catch (err: any) {
+      alert('Upload failed: ' + (err.message || 'Please try again'))
+    }
+    setUploadingAvatar(false)
+    if (avatarInputRef.current) avatarInputRef.current.value = ''
+  }
+
+  const handleRemoveAvatar = async () => {
+    if (!user?.avatar_url) return
+    setUploadingAvatar(true)
+    try {
+      const oldPath = user.avatar_url.split('/avatars/')[1]
+      if (oldPath) await supabase.storage.from('avatars').remove([oldPath])
+    } catch {}
+    await updateAvatarUrl(null)
+    setUploadingAvatar(false)
+  }
+
   const handleUpgrade = async () => {
     setUpgrading(true)
     try {
@@ -147,10 +195,6 @@ export default function SettingsPage() {
     }
   }
 
-  const initials = user?.full_name
-    ? user.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'SX'
-
   const levels = user?.role === 'university' ? UNI_LEVELS : SEC_LEVELS
 
   if (loading) return <div style={{ padding: 40, color: C.muted, textAlign: 'center' }}>Loading...</div>
@@ -167,11 +211,21 @@ export default function SettingsPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: `linear-gradient(135deg,${C.accent},${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <span style={{ fontSize: 20, fontWeight: 800, color: '#fff' }}>{initials}</span>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <Avatar name={user?.full_name} avatarUrl={user?.avatar_url} size={56} fontSize={20} />
+            <input ref={avatarInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarUpload} style={{ display: 'none' }} />
+            <button onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar}
+              style={{ position: 'absolute', bottom: -2, right: -2, width: 22, height: 22, borderRadius: '50%', background: `linear-gradient(135deg,${C.accent},${C.cyan})`, border: '2px solid', borderColor: C.card, color: '#fff', cursor: uploadingAvatar ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+              <Camera size={12} />
+            </button>
           </div>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.white }}>{user?.full_name || 'Student'}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: C.white }}>{user?.full_name || 'Student'}</div>
+              {user?.avatar_url && (
+                <button onClick={handleRemoveAvatar} disabled={uploadingAvatar} style={{ background: 'none', border: 'none', color: C.muted, fontSize: 12, textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>Remove</button>
+              )}
+            </div>
             <div style={{ fontSize: 13, color: C.muted }}>{user?.email}</div>
             <div style={{ fontSize: 12, color: user?.is_premium ? C.accent : C.muted, marginTop: 2 }}>
               {user?.is_premium ? '⚡ Premium member' : 'Free plan'} · {user?.streak || 0} day streak 🔥

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Send, ThumbsUp, MessageCircle, Users, Plus, X, Lock, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import Avatar from '@/components/Avatar'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40',
@@ -21,7 +22,7 @@ interface Post {
   likes_count: number
   is_liked: boolean
   created_at: string
-  users: { full_name: string; level: string; is_premium: boolean }
+  users: { full_name: string; level: string; is_premium: boolean; avatar_url: string | null }
 }
 
 interface Group {
@@ -237,9 +238,7 @@ export default function CommunityPage() {
               {posts.map(post => (
                 <div key={post.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 18 }}>
                   <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: `linear-gradient(135deg,${C.accent}88,${C.cyan}88)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{post.users?.full_name?.[0] || 'S'}</span>
-                    </div>
+                    <Avatar name={post.users?.full_name} avatarUrl={post.users?.avatar_url} size={36} fontSize={13} />
                     <div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 14, fontWeight: 700, color: C.white }}>{post.users?.full_name || 'Student'}</span>

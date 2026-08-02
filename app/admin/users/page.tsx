@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Search, Zap, Trash2, Crown } from 'lucide-react'
+import Avatar from '@/components/Avatar'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40',
@@ -75,11 +76,7 @@ export default function AdminUsersPage() {
           {users.map(u => (
             <div key={u.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 200 }}>
-                <div style={{ width: 38, height: 38, borderRadius: '50%', background: `linear-gradient(135deg,${C.accent},${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>
-                    {u.full_name ? u.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : '?'}
-                  </span>
-                </div>
+                <Avatar name={u.full_name} avatarUrl={u.avatar_url} size={38} fontSize={13} />
                 <div style={{ overflow: 'hidden' }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: C.white, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {u.full_name || 'Unnamed'} {u.is_premium && <Crown size={13} color={C.gold} style={{ display: 'inline', verticalAlign: 'middle', marginLeft: 4 }} />}

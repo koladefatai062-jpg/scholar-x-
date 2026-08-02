@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+
 -- ------------------------------------------------------------
 -- Quiz questions
 -- ------------------------------------------------------------

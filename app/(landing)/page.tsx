@@ -43,7 +43,7 @@ export default function LandingPage() {
       <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'rgba(10,6,40,0.94)', backdropFilter: 'blur(14px)', borderBottom: `1px solid ${C.border}`, padding: '0 24px' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Logo size={32} />
+            <Logo size={32} text="ScholarX" />
           </div>
           <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
             <button onClick={() => router.push('/login')} style={{ background: 'none', border: `1px solid ${C.border}`, color: C.text, padding: '7px 16px', borderRadius: 8, fontSize: 14, cursor: 'pointer' }}>Log in</button>
@@ -179,7 +179,7 @@ export default function LandingPage() {
       {/* FOOTER */}
       <footer style={{ borderTop: `1px solid ${C.border}`, padding: '40px 24px', textAlign: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
-          <Logo size={28} />
+          <Logo size={28} text="ScholarX" />
         </div>
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
           {[

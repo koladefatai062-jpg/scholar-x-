@@ -36,7 +36,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 40 }}>
-          <Logo size={34} />
+          <Logo size={34} text="ScholarX" />
         </div>
 
         <h2 style={{ fontSize: 26, fontWeight: 800, color: C.white, marginBottom: 6 }}>Welcome back</h2>

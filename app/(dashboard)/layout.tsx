@@ -84,7 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }}>
           <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Logo size={32} />
+              <Logo size={32} text="ScholarX" />
             </div>
           </div>
 
@@ -191,7 +191,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           }}>
             <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Logo size={30} />
+                <Logo size={30} text="ScholarX" />
               </div>
               <button onClick={() => setMobileMenuOpen(false)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer' }}>
                 <X size={20} />

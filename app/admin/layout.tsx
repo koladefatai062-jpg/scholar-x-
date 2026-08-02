@@ -71,7 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <aside style={{ width: 220, background: C.surface, borderRight: `1px solid ${C.border}`, height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${C.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Logo size={32} />
+          <Logo size={32} text="ScholarX" />
           <div style={{ fontSize: 10, color: C.accent, fontWeight: 700 }}>ADMIN</div>
         </div>
       </div>

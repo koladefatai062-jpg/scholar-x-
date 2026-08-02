@@ -8,9 +8,44 @@ const DEFAULT_GEMINI_MODELS = [
   'gemini-3.5-flash-lite',
   'gemini-flash-latest',
 ]
+const IMAGE_GEN_MODELS = [
+  'gemini-3.1-flash-image-preview',
+  'gemini-2.5-flash-image',
+  'nano-banana-pro-preview',
+  'gemini-3-pro-image-preview',
+]
 const FREE_DAILY_LIMIT = 10
+const MAX_ATTACHMENTS = 2
+const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024
+const ALLOWED_MIME = /^(image\/(png|jpeg|jpg|webp|gif)|application\/pdf)$/
 
-function geminiRequest(model: string, body: object): Promise<any> {
+interface Attachment {
+  name?: string
+  mimeType: string
+  data: string
+}
+
+const IMAGE_GEN_HINTS = [
+  'draw a', 'draw an', 'draw the', 'drawing of', 'draw me',
+  'sketch', 'paint', 'illustrate', 'illustration of', 'design a', 'design an', 'design the',
+  'generate an image', 'generate a picture', 'generate a photo', 'generate a logo', 'generate a meme', 'generate a diagram', 'generate a chart',
+  'create an image', 'create a picture', 'create a photo', 'create a logo', 'create a meme', 'create a diagram',
+  'make an image', 'make a picture', 'make a photo', 'make a logo', 'make a meme', 'make a diagram',
+  'image of', 'picture of', 'photo of', 'logo of', 'poster of', 'art of', 'meme of', 'icon of', 'diagram of', 'chart of',
+  'draw me a', 'draw me an', 'make me an image', 'generate me an image',
+]
+
+const IMAGE_GEN_EXCLUDES = [
+  'draw a conclusion', 'draw conclusions', 'draw an inference', 'draw inferences',
+]
+
+function wantsImageGeneration(text: string) {
+  const lower = (text || '').toLowerCase()
+  if (IMAGE_GEN_EXCLUDES.some(ex => lower.includes(ex))) return false
+  return IMAGE_GEN_HINTS.some(hint => lower.includes(hint))
+}
+
+function geminiRequest(model: string, body: object, timeoutMs = 90000): Promise<any> {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body)
     const req = https.request({
@@ -21,7 +56,7 @@ function geminiRequest(model: string, body: object): Promise<any> {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(data),
       },
-      timeout: 60000,
+      timeout: timeoutMs,
     }, (res) => {
       let body = ''
       res.on('data', (chunk) => { body += chunk })
@@ -40,6 +75,16 @@ function geminiRequest(model: string, body: object): Promise<any> {
   })
 }
 
+function buildParts(content: string, attachments?: Attachment[], image?: { mimeType: string; data: string } | null) {
+  const parts: any[] = []
+  if (content) parts.push({ text: content })
+  for (const a of attachments || []) {
+    if (a.data) parts.push({ inlineData: { mimeType: a.mimeType, data: a.data } })
+  }
+  if (image?.data) parts.push({ inlineData: { mimeType: image.mimeType, data: image.data } })
+  return parts
+}
+
 function getSystemPrompt(role: string, level: string) {
   return `You are ScholarX AI Tutor — a smart, friendly tutor for Nigerian students.
 
@@ -54,7 +99,9 @@ Your job:
 - For university students, cover 100L-600L course content
 - Give examples using Nigerian context where helpful
 - Never just give an answer — always explain the reasoning
-- Keep responses concise but complete`
+- Keep responses concise but complete
+- When the student sends an image, read it carefully and explain/answer based on what you see
+- When asked to generate an image, you are the image-generation mode and must create the picture`
 }
 
 function getFallbackReply(message: string, role: string, level: string) {
@@ -135,13 +182,104 @@ export async function POST(request: NextRequest) {
   const level = profile.level || 'SS3'
   const systemPrompt = getSystemPrompt(role, level)
 
-  try {
-    const history = messages.slice(0, -1).map((m: any) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }))
+  const saveAssistantMessage = async (content: string, image?: { mimeType: string; data: string } | null) => {
+    if (!conversation_id) return
+    try {
+      const updatedMessages = [
+        ...messages,
+        { role: 'assistant', content, image: image || null, timestamp: new Date().toISOString() },
+      ]
+      await supabase
+        .from('ai_conversations')
+        .update({ messages: updatedMessages, updated_at: new Date().toISOString() })
+        .eq('id', conversation_id)
+        .eq('user_id', user.id)
+    } catch {}
+  }
 
-    const lastMessage = messages[messages.length - 1]
+  const computeRemaining = async () => {
+    if (profile.is_premium) return null
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const { data: usage } = await supabase
+        .from('ai_usage')
+        .select('count')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .single()
+      return FREE_DAILY_LIMIT - (usage?.count || 0)
+    } catch { return null }
+  }
+
+  const lastMessage = messages[messages.length - 1]
+
+  // Validate attachments
+  const attachments: Attachment[] = Array.isArray(lastMessage?.attachments) ? lastMessage.attachments : []
+  if (attachments.length > MAX_ATTACHMENTS) {
+    return NextResponse.json({ error: `You can attach up to ${MAX_ATTACHMENTS} files per message` }, { status: 400 })
+  }
+  for (const a of attachments) {
+    if (!ALLOWED_MIME.test(a.mimeType)) {
+      return NextResponse.json({ error: 'Only images and PDFs can be uploaded' }, { status: 400 })
+    }
+    if (Buffer.byteLength(a.data, 'base64') > MAX_ATTACHMENT_BYTES) {
+      return NextResponse.json({ error: 'Each file must be under 4MB' }, { status: 400 })
+    }
+  }
+
+  const text = lastMessage?.content || ''
+
+  try {
+    // ---- IMAGE GENERATION path ----
+    if (wantsImageGeneration(text)) {
+      let lastError: any = null
+      for (const modelName of IMAGE_GEN_MODELS) {
+        try {
+          const geminiBody = {
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: [
+              ...messages.slice(0, -1).map((m: any) => ({
+                role: m.role === 'assistant' ? 'model' : 'user',
+                parts: buildParts(m.content, m.attachments, m.image),
+              })),
+              { role: 'user', parts: buildParts(text, attachments) },
+            ],
+          }
+
+          const result = await geminiRequest(modelName, geminiBody, 120000)
+          if (result.error) {
+            lastError = new Error(result.error.message || JSON.stringify(result.error))
+            continue
+          }
+
+          const parts = result.candidates?.[0]?.content?.parts || []
+          const inlinePart = parts.find((p: any) => p.inlineData?.data)
+          const image = inlinePart?.inlineData
+            ? { mimeType: inlinePart.inlineData.mimeType || 'image/png', data: inlinePart.inlineData.data }
+            : null
+          const replyText = parts.map((p: any) => p.text || '').join('').trim()
+
+          if (image) {
+            await saveAssistantMessage(replyText, image)
+            return NextResponse.json({ reply: replyText, image, remaining: await computeRemaining() })
+          }
+          if (replyText) {
+            await saveAssistantMessage(replyText)
+            return NextResponse.json({ reply: replyText, remaining: await computeRemaining() })
+          }
+          lastError = new Error('No image returned from model')
+        } catch (error) {
+          lastError = error
+        }
+      }
+
+      console.error('AI tutor: image generation failed.', lastError)
+      const replyText = `I'm sorry — I couldn't generate that image right now. My image-generation service is currently unavailable (quota/limit). You can still ask me to explain concepts, solve questions, or read a photo you upload.`
+      await saveAssistantMessage(replyText)
+      return NextResponse.json({ reply: replyText, image: null, remaining: await computeRemaining() })
+    }
+
+    // ---- TEXT + VISION path ----
     let reply = ''
     let lastError: any = null
 
@@ -150,8 +288,11 @@ export async function POST(request: NextRequest) {
         const geminiBody = {
           system_instruction: { parts: [{ text: systemPrompt }] },
           contents: [
-            ...history,
-            { role: 'user', parts: [{ text: lastMessage.content }] },
+            ...messages.slice(0, -1).map((m: any) => ({
+              role: m.role === 'assistant' ? 'model' : 'user',
+              parts: buildParts(m.content, m.attachments, m.image),
+            })),
+            { role: 'user', parts: buildParts(text, attachments) },
           ],
         }
 
@@ -162,7 +303,7 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        reply = result.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        reply = result.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || ''
         if (reply) break
       } catch (error) {
         lastError = error
@@ -174,35 +315,9 @@ export async function POST(request: NextRequest) {
       throw lastError || new Error('No Gemini response received')
     }
 
-    if (conversation_id) {
-      try {
-        const updatedMessages = [
-          ...messages,
-          { role: 'assistant', content: reply, timestamp: new Date().toISOString() },
-        ]
-        await supabase
-          .from('ai_conversations')
-          .update({ messages: updatedMessages, updated_at: new Date().toISOString() })
-          .eq('id', conversation_id)
-          .eq('user_id', user.id)
-      } catch {}
-    }
+    await saveAssistantMessage(reply)
 
-    let remaining = null
-    if (!profile.is_premium) {
-      try {
-        const today = new Date().toISOString().split('T')[0]
-        const { data: usage } = await supabase
-          .from('ai_usage')
-          .select('count')
-          .eq('user_id', user.id)
-          .eq('date', today)
-          .single()
-        remaining = FREE_DAILY_LIMIT - (usage?.count || 0)
-      } catch {}
-    }
-
-    return NextResponse.json({ reply, remaining })
+    return NextResponse.json({ reply, remaining: await computeRemaining() })
 
   } catch (err: any) {
     console.error('Gemini error:', err)
@@ -211,21 +326,7 @@ export async function POST(request: NextRequest) {
       role,
       level
     )
-
-    if (conversation_id) {
-      try {
-        const updatedMessages = [
-          ...messages,
-          { role: 'assistant', content: fallbackReply, timestamp: new Date().toISOString() },
-        ]
-        await supabase
-          .from('ai_conversations')
-          .update({ messages: updatedMessages, updated_at: new Date().toISOString() })
-          .eq('id', conversation_id)
-          .eq('user_id', user.id)
-      } catch {}
-    }
-
+    await saveAssistantMessage(fallbackReply)
     return NextResponse.json({ reply: fallbackReply, fallback: true, remaining: null }, { status: 200 })
   }
 }

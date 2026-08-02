@@ -1,13 +1,21 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Send, Brain, Zap, Lock } from 'lucide-react'
+import { Send, Brain, Zap, Lock, Paperclip, X, FileText } from 'lucide-react'
 import Logo from '@/components/Logo'
+
+interface Attachment {
+  name?: string
+  mimeType: string
+  data: string
+}
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
   timestamp?: string
+  attachments?: Attachment[]
+  image?: { mimeType: string; data: string } | null
 }
 
 const SUGGESTIONS = [
@@ -19,6 +27,10 @@ const SUGGESTIONS = [
   'What is the law of diminishing returns?',
 ]
 
+const MAX_ATTACHMENTS = 2
+const MAX_FILE_BYTES = 4 * 1024 * 1024
+const ACCEPT = 'image/*,application/pdf'
+
 export default function AITutorPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -29,7 +41,9 @@ export default function AITutorPage() {
   const [limitReached, setLimitReached] = useState(false)
   const [initializing, setInitializing] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -65,18 +79,49 @@ export default function AITutorPage() {
     setInitializing(false)
   }
 
+  const readAsBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve((reader.result as string).split(',')[1])
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+
+    for (const file of files) {
+      if (attachments.length + 1 > MAX_ATTACHMENTS) { alert(`You can attach up to ${MAX_ATTACHMENTS} files`); break }
+      const allowed = /^image\/(png|jpeg|jpg|webp|gif)$/.test(file.type) || file.type === 'application/pdf'
+      if (!allowed) { alert('Only images and PDFs can be uploaded'); continue }
+      if (file.size > MAX_FILE_BYTES) { alert('Each file must be under 4MB'); continue }
+      try {
+        const data = await readAsBase64(file)
+        setAttachments(prev => [...prev, { name: file.name, mimeType: file.type, data }])
+      } catch {
+        alert('Could not read that file. Please try another one.')
+      }
+    }
+  }
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index))
+  }
+
   const send = async () => {
-    if (!input.trim() || loading || limitReached) return
+    if ((!input.trim() && attachments.length === 0) || loading || limitReached) return
 
     const userMessage: Message = {
       role: 'user',
       content: input.trim(),
       timestamp: new Date().toISOString(),
+      attachments: attachments.length ? attachments : undefined,
     }
 
     const updatedMessages = [...messages, userMessage]
     setMessages(updatedMessages)
     setInput('')
+    setAttachments([])
     setLoading(true)
 
     try {
@@ -84,7 +129,12 @@ export default function AITutorPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
+          messages: updatedMessages.map(m => ({
+            role: m.role,
+            content: m.content,
+            attachments: m.attachments,
+            image: m.image,
+          })),
           conversation_id: conversationId,
         }),
       })
@@ -112,10 +162,11 @@ export default function AITutorPage() {
         return
       }
 
-      if (data.reply) {
+      if (data.reply || data.image) {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: data.reply,
+          content: data.reply || '',
+          image: data.image || null,
           timestamp: new Date().toISOString(),
         }])
         if (data.remaining !== null) setRemaining(data.remaining)
@@ -185,8 +236,8 @@ export default function AITutorPage() {
             </div>
             <div style={{ textAlign: 'center' }}>
               <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Your AI Tutor is ready</h3>
-              <p style={{ fontSize: 14, color: '#7B6FA0', maxWidth: 380, lineHeight: 1.6 }}>
-                Ask me anything — maths, science, essays, JAMB prep. I'll explain it properly, step by step.
+              <p style={{ fontSize: 14, color: '#7B6FA0', maxWidth: 400, lineHeight: 1.6 }}>
+                Ask me anything — maths, science, essays, JAMB prep. Upload a photo or PDF and I'll read it, or ask me to draw/generate an image.
               </p>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 8 }}>
@@ -213,10 +264,30 @@ export default function AITutorPage() {
               border: msg.role === 'user' ? 'none' : '1px solid #1E1450',
               borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
               padding: '12px 16px',
+              minWidth: 0,
             }}>
-              <p style={{ fontSize: 14, color: '#E2D9F3', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>
-                {msg.content}
-              </p>
+              {msg.image?.data && (
+                <img
+                  src={`data:${msg.image.mimeType || 'image/png'};base64,${msg.image.data}`}
+                  alt="Generated"
+                  style={{ display: 'block', maxWidth: '100%', maxHeight: 320, borderRadius: 10, marginBottom: msg.content ? 10 : 0 }}
+                />
+              )}
+              {msg.attachments && msg.attachments.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: msg.content ? 8 : 0 }}>
+                  {msg.attachments.map((a, ai) => (
+                    <div key={ai} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.85)', background: 'rgba(255,255,255,0.1)', padding: '5px 9px', borderRadius: 6, maxWidth: 220 }}>
+                      {a.mimeType.startsWith('image/') ? <Brain size={12} /> : <FileText size={12} />}
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name || (a.mimeType.startsWith('image/') ? 'Image' : 'PDF')}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {msg.content && (
+                <p style={{ fontSize: 14, color: '#E2D9F3', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>
+                  {msg.content}
+                </p>
+              )}
             </div>
           </div>
         ))}
@@ -253,13 +324,47 @@ export default function AITutorPage() {
         </div>
       )}
 
+      {attachments.length > 0 && (
+        <div style={{ padding: '10px 24px 0', display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
+          {attachments.map((a, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#150D40', border: '1px solid #1E1450', borderRadius: 8, padding: '6px 10px', fontSize: 12, color: '#E2D9F3', maxWidth: 200 }}>
+              {a.mimeType.startsWith('image/') ? <Brain size={13} color="#7C3AED" /> : <FileText size={13} color="#7C3AED" />}
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name || (a.mimeType.startsWith('image/') ? 'Image' : 'PDF')}</span>
+              <button onClick={() => removeAttachment(i)} style={{ background: 'none', border: 'none', color: '#7B6FA0', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={{ padding: '14px 24px 20px', borderTop: '1px solid #1E1450', display: 'flex', gap: 10, flexShrink: 0 }}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPT}
+          multiple
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={loading || limitReached || attachments.length >= MAX_ATTACHMENTS}
+          title="Upload image or PDF"
+          style={{
+            background: 'none', border: `1px solid ${loading || limitReached || attachments.length >= MAX_ATTACHMENTS ? '#1E1450' : '#1E1450'}`, color: '#7B6FA0',
+            width: 44, height: 44, borderRadius: 10, cursor: loading || limitReached ? 'default' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, alignSelf: 'flex-end',
+          }}
+        >
+          <Paperclip size={16} />
+        </button>
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={limitReached}
-          placeholder={limitReached ? 'Daily limit reached. Upgrade for unlimited access.' : 'Ask anything — maths, science, essays, exam prep...'}
+          placeholder={limitReached ? 'Daily limit reached. Upgrade for unlimited access.' : 'Ask, upload a photo, or say "draw..."/"generate an image of..."'}
           rows={1}
           style={{
             flex: 1, background: '#150D40', border: '1px solid #1E1450', borderRadius: 10,
@@ -270,11 +375,11 @@ export default function AITutorPage() {
         />
         <button
           onClick={send}
-          disabled={!input.trim() || loading || limitReached}
+          disabled={(!input.trim() && attachments.length === 0) || loading || limitReached}
           style={{
-            background: input.trim() && !loading && !limitReached ? 'linear-gradient(135deg,#7C3AED,#5B21B6)' : '#1E1450',
+            background: (input.trim() || attachments.length > 0) && !loading && !limitReached ? 'linear-gradient(135deg,#7C3AED,#5B21B6)' : '#1E1450',
             border: 'none', color: '#fff', width: 44, height: 44, borderRadius: 10,
-            cursor: input.trim() && !loading && !limitReached ? 'pointer' : 'default',
+            cursor: (input.trim() || attachments.length > 0) && !loading && !limitReached ? 'pointer' : 'default',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, alignSelf: 'flex-end',
           }}
         >

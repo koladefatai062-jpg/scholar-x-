@@ -213,10 +213,7 @@ export default function AITutorPage() {
           <Logo size={36} radius={10} />
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Scholar</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block', animation: 'onlinePing 1.6s ease-in-out infinite' }} />
-              <span style={{ fontSize: 12, color: '#7B6FA0' }}>Online · replies instantly</span>
-            </div>
+            <div style={{ fontSize: 12, color: '#7B6FA0' }}>Online · replies instantly</div>
           </div>
         </div>
 
@@ -267,7 +264,6 @@ export default function AITutorPage() {
             <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
               {msg.role === 'assistant' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4, paddingLeft: 38 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#9F8FCC', letterSpacing: 0.4, textTransform: 'uppercase' }}>Scholar</span>
                 </div>
               )}
@@ -332,7 +328,6 @@ export default function AITutorPage() {
         {loading && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4, paddingLeft: 38 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
               <span style={{ fontSize: 11, fontWeight: 700, color: '#9F8FCC', letterSpacing: 0.4, textTransform: 'uppercase' }}>Scholar is thinking</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -434,10 +429,6 @@ export default function AITutorPage() {
         @keyframes pulse {
           0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
           40% { opacity: 1; transform: scale(1); }
-        }
-        @keyframes onlinePing {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
-          50% { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
         }
       `}</style>
     </div>

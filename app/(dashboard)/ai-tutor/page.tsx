@@ -39,19 +39,19 @@ interface ConversationItem {
 }
 
 const SUGGESTIONS = [
+  'What should I study next?',
   'Explain integration by parts',
   'What is osmosis?',
   'How to write a WAEC essay',
   'Solve quadratic equations',
   'Explain photoelectric effect',
-  'What is the law of diminishing returns?',
 ]
 
 const MAX_ATTACHMENTS = 2
 const MAX_FILE_BYTES = 4 * 1024 * 1024
 const ACCEPT = 'image/*,application/pdf'
 
-const FOLLOW_UPS = ['Give me a practice question', 'Explain it more simply', 'Another example, please']
+const FOLLOW_UPS = ['What should I study next?', 'Give me a practice question', 'Explain it more simply', 'Another example, please']
 
 const formatTime = (iso?: string) => iso
   ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -427,7 +427,10 @@ export default function AITutorPage() {
               <div style={{ textAlign: 'center' }}>
                 <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Hey! I'm Scholar 👋</h3>
                 <p style={{ fontSize: 14, color: '#7B6FA0', maxWidth: 420, lineHeight: 1.6 }}>
-                  Your personal AI tutor. Ask me anything — maths, science, essays, JAMB prep. Upload a photo or PDF and I'll read it for you, or ask me to draw/generate an image. I'm online 24/7!
+                  Your personal AI tutor. Ask me anything — maths, science, essays, JAMB prep. Upload a photo or PDF and I'll read it for you, or ask me to draw/generate an image.
+                </p>
+                <p style={{ fontSize: 13, color: '#9F8FCC', maxWidth: 420, lineHeight: 1.6 }}>
+                  I can see your quiz results, grades and saved notes — ask me what to study next!
                 </p>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 8 }}>

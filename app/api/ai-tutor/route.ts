@@ -87,6 +87,105 @@ function plainify(text: string): string {
     .trim()
 }
 
+async function buildStudentContext(supabase: any, userId: string, profile: any): Promise<string | null> {
+  const lines: string[] = []
+  const role = profile?.role || 'secondary'
+  const level = profile?.level || ''
+
+  lines.push(`Student: ${profile?.full_name || 'student'} (${role === 'secondary' ? 'Secondary School' : 'University'}${level ? `, Level ${level}` : ''}, ${profile?.is_premium ? 'Premium plan' : 'Free plan'})`)
+
+  // Quiz performance per subject
+  try {
+    const { data: attempts } = await supabase
+      .from('quiz_attempts')
+      .select('exam, subject, score, total, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (attempts && attempts.length > 0) {
+      const bySubject: Record<string, { exams: Set<string>; scores: number[] }> = {}
+      for (const a of attempts) {
+        const s = a.subject || 'Unknown'
+        if (!bySubject[s]) bySubject[s] = { exams: new Set(), scores: [] }
+        bySubject[s].exams.add(a.exam || '')
+        bySubject[s].scores.push(a.total > 0 ? (a.score / a.total) * 100 : 0)
+      }
+      const rows = Object.entries(bySubject).map(([subject, v]) => ({
+        subject,
+        exams: Array.from(v.exams).filter(Boolean),
+        count: v.scores.length,
+        avg: Math.round(v.scores.reduce((x, y) => x + y, 0) / v.scores.length),
+        last: Math.round(v.scores[0]),
+      }))
+      rows.sort((a, b) => a.avg - b.avg)
+      lines.push('Quiz performance per subject (weakest first):')
+      rows.forEach(r => {
+        lines.push(`- ${r.subject}: ${r.avg}% average over ${r.count} quiz attempt(s) (${r.exams.join(', ')}), latest ${r.last}%`)
+      })
+    } else {
+      lines.push('Quiz performance: no quiz attempts yet.')
+    }
+  } catch {}
+
+  // Grades / results
+  try {
+    if (role === 'university') {
+      const { data: courses } = await supabase
+        .from('courses')
+        .select('code, name, grade, score')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      if (courses && courses.length > 0) {
+        lines.push('Current course grades:')
+        courses.forEach((c: any) => lines.push(`- ${c.code || c.name || 'Course'}: ${c.grade || 'N/A'}${c.score != null ? ` (${c.score})` : ''}`))
+      }
+    } else {
+      const { data: results } = await supabase
+        .from('term_results')
+        .select('subject, ca_score, exam_score, total')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      if (results && results.length > 0) {
+        lines.push('Current term results:')
+        results.forEach((r: any) => lines.push(`- ${r.subject}: total ${r.total} (CA ${r.ca_score} + Exam ${r.exam_score})`))
+      }
+    }
+  } catch {}
+
+  // Saved items
+  try {
+    const { data: saved } = await supabase
+      .from('saved_items')
+      .select('library_items (title, subject)')
+      .eq('user_id', userId)
+      .limit(10)
+    if (saved && saved.length > 0) {
+      const titles = saved
+        .map((s: any) => `${s.library_items?.title || 'Item'}${s.library_items?.subject ? ` (${s.library_items.subject})` : ''}`)
+        .filter(Boolean)
+      if (titles.length > 0) lines.push(`Saved items: ${titles.join(', ')}`)
+    }
+  } catch {}
+
+  // Library catalog
+  try {
+    const { data: items } = await supabase
+      .from('library_items')
+      .select('title, subject, type, is_premium')
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (items && items.length > 0) {
+      lines.push('Library catalog (recommend by exact title):')
+      items.forEach((i: any) => lines.push(`- ${i.title} [${i.subject || 'General'}${i.is_premium ? ', PREMIUM' : ''}]`))
+    }
+  } catch {}
+
+  if (lines.length <= 1) return null
+  return lines.join('\n')
+}
+
 function wantsImageGeneration(text: string) {
   const lower = (text || '').toLowerCase()
   if (IMAGE_GEN_EXCLUDES.some(ex => lower.includes(ex))) return false
@@ -156,7 +255,7 @@ function buildParts(content: string, attachments?: Attachment[], image?: { mimeT
   return parts
 }
 
-function getSystemPrompt(role: string, level: string) {
+function getSystemPrompt(role: string, level: string, studentContext?: string | null) {
   return `You are Scholar — the ScholarX AI Tutor. You are a smart, warm, friendly Nigerian tutor who genuinely cares about your students doing well.
 
 Personality:
@@ -185,7 +284,19 @@ Your job:
 - Never just give an answer — always explain the reasoning
 - MATHEMATICS: always give full step-by-step working, write the formula/rule first, use clear plain-text notation (x^2, sqrt(), a/b, ×, ÷, ≈, π, ≤, ≥), and always finish with the final answer on its own line like "Answer: ...". Verify by substituting back when possible.
 - When the student sends an image, read it carefully and explain/answer based on what you see
-- IMAGE GENERATION: when asked to generate an image, you are in image-generation mode — you must output the actual generated image, with at most a short one-line caption. NEVER reply with links or stock-photo URLs, and never say you are "text-based". If you cannot output an image, say so briefly and offer to explain the topic instead.`
+- IMAGE GENERATION: when asked to generate an image, you are in image-generation mode — you must output the actual generated image, with at most a short one-line caption. NEVER reply with links or stock-photo URLs, and never say you are "text-based". If you cannot output an image, say so briefly and offer to explain the topic instead.` +
+`${studentContext ? `
+
+STUDENT DASHBOARD DATA (real data — use it to personalise):
+${studentContext}
+
+USING THIS DATA (STRICT rules):
+- This is your student's REAL data. Use it to personalise every lesson.
+- NEVER invent scores, results, attempts, or library items that are not listed here. If a section is missing or empty, say naturally that you don't have that record yet.
+- Be PROACTIVE: at natural moments — after answering a question, when the student asks how to improve or what to study, or when a topic matches one of their weak subjects — point out their weak subjects using the real numbers above and offer a quick practice question.
+- When recommending reading, name SPECIFIC Library items by their exact title from the catalog above, matched to the weak subject.
+- Only recommend PREMIUM items to students on the Premium plan; otherwise point them to the free items or mention upgrading.
+- Keep it brief, encouraging and never demoralising.` : ''}`
 }
 
 function getFallbackReply(message: string, role: string, level: string) {
@@ -211,11 +322,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('is_premium, role, level')
-    .eq('id', user.id)
-    .single()
+  let profile: any = null
+  try {
+    const { data } = await supabase
+      .from('users')
+      .select('is_premium, role, level, full_name, streak')
+      .eq('id', user.id)
+      .single()
+    profile = data
+  } catch {}
+  if (!profile) {
+    try {
+      const { data } = await supabase
+        .from('users')
+        .select('is_premium, role, level, full_name')
+        .eq('id', user.id)
+        .single()
+      profile = data
+    } catch {}
+  }
 
   if (!profile) {
     return NextResponse.json({ error: 'User profile not found' }, { status: 404 })
@@ -264,7 +389,8 @@ export async function POST(request: NextRequest) {
 
   const role = profile.role || 'secondary'
   const level = profile.level || 'SS3'
-  const systemPrompt = getSystemPrompt(role, level)
+  const studentContext = await buildStudentContext(supabase, user.id, profile)
+  const systemPrompt = getSystemPrompt(role, level, studentContext)
 
   let convId: string | null = conversation_id || null
   if (!convId) {

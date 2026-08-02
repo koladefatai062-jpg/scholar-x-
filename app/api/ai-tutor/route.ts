@@ -86,20 +86,25 @@ function buildParts(content: string, attachments?: Attachment[], image?: { mimeT
 }
 
 function getSystemPrompt(role: string, level: string) {
-  return `You are ScholarX AI Tutor — a smart, friendly tutor for Nigerian students.
+  return `You are Scholar — the ScholarX AI Tutor. You are a smart, warm, friendly Nigerian tutor who genuinely cares about your students doing well.
+
+Personality:
+- Call yourself "Scholar" sometimes ("Here's how I'd break this down…")
+- Warm, encouraging and patient. Celebrate small wins ("Nice — you've got this", "Great progress!")
+- Sound like a real human tutor talking to a Nigerian student, not a robot
+- Use simple, relatable English and Nigerian examples (NEPA/NEPA bills, market prices, afrobeat, football, school life) where it helps
+- Keep responses concise but complete — a paragraph or a few bullet points, never walls of text
+- Ask a short check-in at the end when it fits ("Want me to give you a quick practice question on this?")
 
 Student profile:
 - Track: ${role === 'secondary' ? 'Secondary School' : 'University'}
 - Level: ${level}
 
 Your job:
-- Explain concepts clearly and step by step
-- Use simple English a Nigerian student will understand
+- Explain concepts clearly, step by step
 - Know JAMB, WAEC, NECO, BECE syllabuses inside out
 - For university students, cover 100L-600L course content
-- Give examples using Nigerian context where helpful
 - Never just give an answer — always explain the reasoning
-- Keep responses concise but complete
 - When the student sends an image, read it carefully and explain/answer based on what you see
 - When asked to generate an image, you are the image-generation mode and must create the picture`
 }
@@ -109,14 +114,14 @@ function getFallbackReply(message: string, role: string, level: string) {
   const learnerLabel = role === 'secondary' ? 'secondary school' : 'university'
 
   if (normalized.includes('equation') || normalized.includes('solve') || normalized.includes('algebra')) {
-    return `The AI tutor service is temporarily unavailable, but here's a reliable study approach for ${learnerLabel} work: break the problem into small steps, identify the formula or concept involved, substitute the known values, and solve one step at a time. If you share the exact question, I can still guide you through it.`
+    return `Sorry, I hit a little network hiccup and couldn't reach the live AI right now — no wahala! Here's a solid study approach for ${learnerLabel} work meanwhile: break the problem into small steps, identify the formula or concept involved, substitute the known values, and solve one step at a time. Send me the exact question and I'll guide you through it properly.`
   }
 
   if (normalized.includes('essay') || normalized.includes('write')) {
-    return `The AI tutor service is temporarily unavailable right now. For an essay, start with a clear introduction, then give 2–3 main points with examples, and finish with a short conclusion. Keep each paragraph focused on one idea.`
+    return `Sorry, I hit a small hiccup and couldn't reach the live AI right now — I'm still here though! For an essay, start with a clear introduction, then give 2–3 main points with examples, and finish with a short conclusion. Keep each paragraph focused on one idea. Send me the topic and I'll help you build it.`
   }
 
-  return `The AI tutor service is temporarily unavailable right now, so I can't generate a live answer yet. For ${level}, the best approach is to write down the key definition or formula, break the question into smaller parts, and solve it step by step. If you send the exact topic, I can guide you through it.`
+  return `Sorry, I hit a little hiccup and couldn't reach the live AI right now — I'm still here though! For ${level}, the best approach is to write down the key definition or formula, break the question into smaller parts, and solve it step by step. Send me the exact topic and I'll guide you through it.`
 }
 
 export async function POST(request: NextRequest) {
@@ -274,7 +279,7 @@ export async function POST(request: NextRequest) {
       }
 
       console.error('AI tutor: image generation failed.', lastError)
-      const replyText = `I'm sorry — I couldn't generate that image right now. My image-generation service is currently unavailable (quota/limit). You can still ask me to explain concepts, solve questions, or read a photo you upload.`
+      const replyText = `Hmm, I couldn't generate that image right now — my image service is having a moment (quota/limit). No wahala! I can still explain concepts, solve questions, or read a photo you upload. Try again in a bit, or ask me to explain the thing instead.`
       await saveAssistantMessage(replyText)
       return NextResponse.json({ reply: replyText, image: null, remaining: await computeRemaining() })
     }

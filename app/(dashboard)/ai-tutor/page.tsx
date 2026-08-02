@@ -31,6 +31,12 @@ const MAX_ATTACHMENTS = 2
 const MAX_FILE_BYTES = 4 * 1024 * 1024
 const ACCEPT = 'image/*,application/pdf'
 
+const FOLLOW_UPS = ['Give me a practice question', 'Explain it more simply', 'Another example, please']
+
+const formatTime = (iso?: string) => iso
+  ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  : ''
+
 export default function AITutorPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -108,12 +114,13 @@ export default function AITutorPage() {
     setAttachments(prev => prev.filter((_, i) => i !== index))
   }
 
-  const send = async () => {
-    if ((!input.trim() && attachments.length === 0) || loading || limitReached) return
+  const send = async (suggested?: string) => {
+    const text = (suggested ?? input).trim()
+    if ((!text && attachments.length === 0) || loading || limitReached) return
 
     const userMessage: Message = {
       role: 'user',
-      content: input.trim(),
+      content: text,
       timestamp: new Date().toISOString(),
       attachments: attachments.length ? attachments : undefined,
     }
@@ -205,8 +212,11 @@ export default function AITutorPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Logo size={36} radius={10} />
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>ScholarX AI Tutor</div>
-            <div style={{ fontSize: 12, color: '#7B6FA0' }}>Powered by Google Gemini</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Scholar</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block', animation: 'onlinePing 1.6s ease-in-out infinite' }} />
+              <span style={{ fontSize: 12, color: '#7B6FA0' }}>Online · replies instantly</span>
+            </div>
           </div>
         </div>
 
@@ -235,9 +245,9 @@ export default function AITutorPage() {
               <Brain size={26} color="#fff" />
             </div>
             <div style={{ textAlign: 'center' }}>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Your AI Tutor is ready</h3>
-              <p style={{ fontSize: 14, color: '#7B6FA0', maxWidth: 400, lineHeight: 1.6 }}>
-                Ask me anything — maths, science, essays, JAMB prep. Upload a photo or PDF and I'll read it, or ask me to draw/generate an image.
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Hey! I'm Scholar 👋</h3>
+              <p style={{ fontSize: 14, color: '#7B6FA0', maxWidth: 420, lineHeight: 1.6 }}>
+                Your personal AI tutor. Ask me anything — maths, science, essays, JAMB prep. Upload a photo or PDF and I'll read it for you, or ask me to draw/generate an image. I'm online 24/7!
               </p>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 8 }}>
@@ -251,57 +261,90 @@ export default function AITutorPage() {
           </div>
         )}
 
-        {messages.map((msg, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-            {msg.role === 'assistant' && (
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 10, flexShrink: 0, marginTop: 2 }}>
-                <Brain size={13} color="#fff" />
-              </div>
-            )}
-            <div style={{
-              maxWidth: '72%',
-              background: msg.role === 'user' ? 'linear-gradient(135deg,#7C3AED,#5B21B6)' : '#150D40',
-              border: msg.role === 'user' ? 'none' : '1px solid #1E1450',
-              borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-              padding: '12px 16px',
-              minWidth: 0,
-            }}>
-              {msg.image?.data && (
-                <img
-                  src={`data:${msg.image.mimeType || 'image/png'};base64,${msg.image.data}`}
-                  alt="Generated"
-                  style={{ display: 'block', maxWidth: '100%', maxHeight: 320, borderRadius: 10, marginBottom: msg.content ? 10 : 0 }}
-                />
+        {messages.map((msg, i) => {
+          const isLast = i === messages.length - 1
+          return (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+              {msg.role === 'assistant' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4, paddingLeft: 38 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#9F8FCC', letterSpacing: 0.4, textTransform: 'uppercase' }}>Scholar</span>
+                </div>
               )}
-              {msg.attachments && msg.attachments.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: msg.content ? 8 : 0 }}>
-                  {msg.attachments.map((a, ai) => (
-                    <div key={ai} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.85)', background: 'rgba(255,255,255,0.1)', padding: '5px 9px', borderRadius: 6, maxWidth: 220 }}>
-                      {a.mimeType.startsWith('image/') ? <Brain size={12} /> : <FileText size={12} />}
-                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name || (a.mimeType.startsWith('image/') ? 'Image' : 'PDF')}</span>
+              <div style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', width: '100%' }}>
+                {msg.role === 'assistant' && (
+                  <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 10, flexShrink: 0, marginTop: 2 }}>
+                    <Brain size={13} color="#fff" />
+                  </div>
+                )}
+                <div style={{
+                  maxWidth: '72%',
+                  background: msg.role === 'user' ? 'linear-gradient(135deg,#7C3AED,#5B21B6)' : '#150D40',
+                  border: msg.role === 'user' ? 'none' : '1px solid #1E1450',
+                  borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                  padding: '12px 16px',
+                  minWidth: 0,
+                  boxShadow: msg.role === 'user' ? '0 4px 14px rgba(124,58,237,0.25)' : 'none',
+                }}>
+                  {msg.image?.data && (
+                    <img
+                      src={`data:${msg.image.mimeType || 'image/png'};base64,${msg.image.data}`}
+                      alt="Generated"
+                      style={{ display: 'block', maxWidth: '100%', maxHeight: 320, borderRadius: 10, marginBottom: msg.content ? 10 : 0 }}
+                    />
+                  )}
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: msg.content ? 8 : 0 }}>
+                      {msg.attachments.map((a, ai) => (
+                        <div key={ai} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.85)', background: 'rgba(255,255,255,0.1)', padding: '5px 9px', borderRadius: 6, maxWidth: 220 }}>
+                          {a.mimeType.startsWith('image/') ? <Brain size={12} /> : <FileText size={12} />}
+                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name || (a.mimeType.startsWith('image/') ? 'Image' : 'PDF')}</span>
+                        </div>
+                      ))}
                     </div>
+                  )}
+                  {msg.content && (
+                    <p style={{ fontSize: 14, color: '#E2D9F3', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>
+                      {msg.content}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {msg.timestamp && (
+                <div style={{ fontSize: 11, color: '#5A4E80', marginTop: 4, paddingLeft: msg.role === 'user' ? 0 : 38, paddingRight: msg.role === 'user' ? 4 : 0 }}>
+                  {formatTime(msg.timestamp)}
+                </div>
+              )}
+              {msg.role === 'assistant' && isLast && !loading && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8, paddingLeft: 38 }}>
+                  {FOLLOW_UPS.map(f => (
+                    <button key={f} onClick={() => send(f)}
+                      style={{ padding: '6px 12px', background: '#150D40', border: '1px solid #7C3AED55', borderRadius: 16, fontSize: 12, color: '#C4B5FD', cursor: 'pointer', transition: 'all 0.2s' }}>
+                      {f}
+                    </button>
                   ))}
                 </div>
               )}
-              {msg.content && (
-                <p style={{ fontSize: 14, color: '#E2D9F3', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>
-                  {msg.content}
-                </p>
-              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
 
         {loading && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Brain size={13} color="#fff" />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4, paddingLeft: 38 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#9F8FCC', letterSpacing: 0.4, textTransform: 'uppercase' }}>Scholar is thinking</span>
             </div>
-            <div style={{ background: '#150D40', border: '1px solid #1E1450', borderRadius: '14px 14px 14px 4px', padding: '12px 16px' }}>
-              <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                {[0, 1, 2].map(i => (
-                  <div key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: '#7C3AED', animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }} />
-                ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Brain size={13} color="#fff" />
+              </div>
+              <div style={{ background: '#150D40', border: '1px solid #1E1450', borderRadius: '14px 14px 14px 4px', padding: '12px 16px' }}>
+                <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                  {[0, 1, 2].map(i => (
+                    <div key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: '#7C3AED', animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -374,7 +417,7 @@ export default function AITutorPage() {
           }}
         />
         <button
-          onClick={send}
+          onClick={() => send()}
           disabled={(!input.trim() && attachments.length === 0) || loading || limitReached}
           style={{
             background: (input.trim() || attachments.length > 0) && !loading && !limitReached ? 'linear-gradient(135deg,#7C3AED,#5B21B6)' : '#1E1450',
@@ -391,6 +434,10 @@ export default function AITutorPage() {
         @keyframes pulse {
           0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
           40% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes onlinePing {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+          50% { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
         }
       `}</style>
     </div>

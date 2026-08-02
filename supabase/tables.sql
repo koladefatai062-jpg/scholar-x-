@@ -378,21 +378,25 @@ CREATE POLICY "ai_conv_delete_own" ON ai_conversations FOR DELETE USING (auth.ui
 -- ============================================================
 -- RPC functions (counters)
 -- ============================================================
+DROP FUNCTION IF EXISTS increment_likes(uuid);
 CREATE OR REPLACE FUNCTION increment_likes(p_post_id UUID)
 RETURNS void LANGUAGE sql SECURITY DEFINER AS $$
   UPDATE posts SET likes_count = likes_count + 1 WHERE id = p_post_id;
 $$;
 
+DROP FUNCTION IF EXISTS decrement_likes(uuid);
 CREATE OR REPLACE FUNCTION decrement_likes(p_post_id UUID)
 RETURNS void LANGUAGE sql SECURITY DEFINER AS $$
   UPDATE posts SET likes_count = GREATEST(likes_count - 1, 0) WHERE id = p_post_id;
 $$;
 
+DROP FUNCTION IF EXISTS increment_group_members(uuid);
 CREATE OR REPLACE FUNCTION increment_group_members(p_group_id UUID)
 RETURNS void LANGUAGE sql SECURITY DEFINER AS $$
   UPDATE groups SET member_count = member_count + 1 WHERE id = p_group_id;
 $$;
 
+DROP FUNCTION IF EXISTS decrement_group_members(uuid);
 CREATE OR REPLACE FUNCTION decrement_group_members(p_group_id UUID)
 RETURNS void LANGUAGE sql SECURITY DEFINER AS $$
   UPDATE groups SET member_count = GREATEST(member_count - 1, 0) WHERE id = p_group_id;

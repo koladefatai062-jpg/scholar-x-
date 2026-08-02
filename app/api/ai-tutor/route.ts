@@ -33,6 +33,9 @@ const IMAGE_GEN_HINTS = [
   'make an image', 'make a picture', 'make a photo', 'make a logo', 'make a meme', 'make a diagram',
   'image of', 'picture of', 'photo of', 'logo of', 'poster of', 'art of', 'meme of', 'icon of', 'diagram of', 'chart of',
   'draw me a', 'draw me an', 'make me an image', 'generate me an image',
+  'show me a picture', 'show me an image', 'show me a photo', 'show me a logo', 'show me a poster',
+  'make me a', 'make me an', 'give me a picture', 'give me an image', 'give me a photo',
+  'i need a picture', 'i need an image', 'i need a photo', 'wallpaper of', 'map of', 'cartoon of', 'avatar of',
 ]
 
 const IMAGE_GEN_EXCLUDES = [
@@ -48,11 +51,12 @@ const MATH_HINTS = [
 ]
 
 const MATH_INSTRUCTION = `MATHEMATICS MODE — the student asked a maths question, so follow these rules STRICTLY:
+0. NEVER use LaTeX or markdown. No $ or $$, no backslash commands, no **, no #, no ---.
 1. Work through EVERY step in full. Never skip a step or say "then simplify".
 2. Put each step on its own line, with a short explanation of what you did and why.
-3. Use clear plain-text notation: x^2 for squared, sqrt(9) for square root, a/b for fractions, × and ÷ for multiply/divide, ≈ for approximately, π for pi, ≤ ≥ ± °.
-4. State the rule or formula BEFORE applying it.
-5. Show the substitution, the working, and then the final answer clearly on its own line, e.g.: Answer: x = 2 or x = 5
+3. Write numbers in plain text: x^2 for squared, sqrt(9) for square root, a/b for fractions, x for multiply, / for divide, approx for approximately.
+4. State the rule or formula BEFORE applying it, in plain text.
+5. Show the substitution, the working, and then the final answer clearly on its own line, e.g.: ANSWER: x = 2 or x = 5
 6. Verify the answer by plugging it back in and mention the check.
 7. If the answer is wrong-answer-friendly (MCQ-style), show how to pick the correct option.
 8. End with one quick practice question at the same level: "Try this: ..."`
@@ -62,10 +66,54 @@ function isMathQuestion(text: string) {
   return MATH_HINTS.some(h => lower.includes(h))
 }
 
+function plainify(text: string): string {
+  return (text || '')
+    .replace(/\$\$([\s\S]*?)\$\$/g, '$1')
+    .replace(/\$([^$\n]*)\$/g, '$1')
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)')
+    .replace(/\\sqrt\{([^}]*)\}/g, 'sqrt($1)')
+    .replace(/\\times/g, 'x')
+    .replace(/\\div/g, '/')
+    .replace(/\\neq/g, 'not equal to')
+    .replace(/\\approx/g, 'approx')
+    .replace(/\\le/g, '<=').replace(/\\ge/g, '>=')
+    .replace(/\\cdot/g, 'x')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .replace(/^\s*-{3,}\s*$/gm, '')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 function wantsImageGeneration(text: string) {
   const lower = (text || '').toLowerCase()
   if (IMAGE_GEN_EXCLUDES.some(ex => lower.includes(ex))) return false
   return IMAGE_GEN_HINTS.some(hint => lower.includes(hint))
+}
+
+async function generateViaPollinations(prompt: string): Promise<string | null> {
+  try {
+    const cleaned = prompt
+      .replace(/^(please\s+)?(can you|could you|would you|please)\s+/i, '')
+      .replace(/^(draw|draw me|generate|create|make|make me|paint|show me|design|sketch|imagine|illustrate|produce)\s+(an?\s+|the\s+|me\s+)?(image|picture|photo|logo|poster|meme|art|icon|diagram|chart|wallpaper|drawing|illustration|design|car)?\s*(of\s+)?/i, '')
+      .replace(/["'#<>{}]/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+      .slice(0, 200)
+    const q = encodeURIComponent(cleaned || 'beautiful scene')
+    const url = `https://image.pollinations.ai/prompt/${q}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 10000)}`
+
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 90000)
+    const res = await fetch(url, { signal: ctrl.signal })
+    clearTimeout(timer)
+    if (res.ok) return url
+    return null
+  } catch {
+    return null
+  }
 }
 
 function geminiRequest(model: string, body: object, timeoutMs = 90000): Promise<any> {
@@ -118,6 +166,13 @@ Personality:
 - Use simple, relatable English and Nigerian examples (NEPA/NEPA bills, market prices, afrobeat, football, school life) where it helps
 - Keep responses concise but complete — a paragraph or a few bullet points, never walls of text
 - Ask a short check-in at the end when it fits ("Want me to give you a quick practice question on this?")
+
+FORMATTING (STRICT — follow this ALWAYS):
+- Reply in PLAIN TEXT ONLY. Never use markdown or LaTeX.
+- Never use $ or $$, backslash commands like \frac, \sqrt, \times, \neq. Write maths in plain text: x = 2, x^2, sqrt(9), 8 x 3 = 24, 10 / 2 = 5.
+- Never use markdown symbols: ** **, * *, # ##, >, backticks, ---, | table pipes.
+- For structure, use CAPITAL LETTERS on their own line (e.g. "ANSWER: 11" or "STEP 1:"), never # or **.
+- Keep it short and readable on a phone: short lines, no clutter.
 
 Student profile:
 - Track: ${role === 'secondary' ? 'Secondary School' : 'University'}
@@ -335,6 +390,14 @@ export async function POST(request: NextRequest) {
       }
 
       console.error('AI tutor: image generation failed.', lastError)
+
+      const pollUrl = await generateViaPollinations(text)
+      if (pollUrl) {
+        const caption = 'Here you go! 🎨 Tell me what to change and I\'ll redraw it.'
+        await saveAssistantMessage(caption, null, [pollUrl])
+        return NextResponse.json({ reply: caption, image: null, images: [pollUrl], conversation_id: convId, remaining: await computeRemaining() })
+      }
+
       const replyText = `Hmm, I couldn't generate that image right now — my image service is having a moment (quota/limit). No wahala! I can still explain concepts, solve questions, or read a photo you upload. Try again in a bit, or ask me to explain the thing instead.`
       await saveAssistantMessage(replyText)
       return NextResponse.json({ reply: replyText, image: null, conversation_id: convId, remaining: await computeRemaining() })
@@ -374,6 +437,17 @@ export async function POST(request: NextRequest) {
     if (!reply) {
       console.error('AI tutor: all Gemini models failed.', lastError)
       throw lastError || new Error('No Gemini response received')
+    }
+
+    reply = plainify(reply)
+
+    if (/(can'?t|cannot|don'?t)\s+(generate|create|make|produce)\s+(images|pictures|photos)|i'?m\s+text[- ]?based|i\s+can'?t\s+(send|create|generate|output)\s+(images|pictures|photos)/i.test(reply)) {
+      const pollUrl = await generateViaPollinations(text)
+      if (pollUrl) {
+        const caption = 'Here you go! 🎨 Tell me what to change and I\'ll redraw it.'
+        await saveAssistantMessage(caption, null, [pollUrl])
+        return NextResponse.json({ reply: caption, image: null, images: [pollUrl], conversation_id: convId, remaining: await computeRemaining() })
+      }
     }
 
     await saveAssistantMessage(reply)

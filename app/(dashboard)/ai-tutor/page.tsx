@@ -462,10 +462,19 @@ export default function AITutorPage() {
                     {msg.attachments && msg.attachments.length > 0 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: msg.content ? 8 : 0 }}>
                         {msg.attachments.map((a, ai) => (
-                          <div key={ai} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.85)', background: 'rgba(255,255,255,0.1)', padding: '5px 9px', borderRadius: 6, maxWidth: 220 }}>
-                            {a.mimeType.startsWith('image/') ? <Brain size={12} /> : <FileText size={12} />}
-                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name || (a.mimeType.startsWith('image/') ? 'Image' : 'PDF')}</span>
-                          </div>
+                          a.mimeType.startsWith('image/') ? (
+                            <img
+                              key={ai}
+                              src={`data:${a.mimeType};base64,${a.data}`}
+                              alt={a.name || 'Uploaded image'}
+                              style={{ display: 'block', maxWidth: 260, maxHeight: 260, borderRadius: 10, objectFit: 'cover', border: '1px solid rgba(255,255,255,0.15)' }}
+                            />
+                          ) : (
+                            <div key={ai} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.85)', background: 'rgba(255,255,255,0.1)', padding: '5px 9px', borderRadius: 6, maxWidth: 220 }}>
+                              <FileText size={12} />
+                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name || 'PDF'}</span>
+                            </div>
+                          )
                         ))}
                       </div>
                     )}

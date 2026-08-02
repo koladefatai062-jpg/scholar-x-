@@ -39,6 +39,29 @@ const IMAGE_GEN_EXCLUDES = [
   'draw a conclusion', 'draw conclusions', 'draw an inference', 'draw inferences',
 ]
 
+const MATH_HINTS = [
+  'solve', 'equation', 'algebra', 'calculus', 'differentiat', 'integrat',
+  'find the value', 'simplif', 'factor', 'quadratic', 'derivative', 'integral',
+  'probability', 'matric', 'trigonom', 'logarithm', 'fraction', 'percentage',
+  'arithmetic', 'geometry', 'pythagor', 'simultaneous', 'indices', 'roots of',
+  'sum of', 'prove that', 'evaluate', 'expand', 'bracket', 'inequalit', 'graph',
+]
+
+const MATH_INSTRUCTION = `MATHEMATICS MODE — the student asked a maths question, so follow these rules STRICTLY:
+1. Work through EVERY step in full. Never skip a step or say "then simplify".
+2. Put each step on its own line, with a short explanation of what you did and why.
+3. Use clear plain-text notation: x^2 for squared, sqrt(9) for square root, a/b for fractions, × and ÷ for multiply/divide, ≈ for approximately, π for pi, ≤ ≥ ± °.
+4. State the rule or formula BEFORE applying it.
+5. Show the substitution, the working, and then the final answer clearly on its own line, e.g.: Answer: x = 2 or x = 5
+6. Verify the answer by plugging it back in and mention the check.
+7. If the answer is wrong-answer-friendly (MCQ-style), show how to pick the correct option.
+8. End with one quick practice question at the same level: "Try this: ..."`
+
+function isMathQuestion(text: string) {
+  const lower = (text || '').toLowerCase()
+  return MATH_HINTS.some(h => lower.includes(h))
+}
+
 function wantsImageGeneration(text: string) {
   const lower = (text || '').toLowerCase()
   if (IMAGE_GEN_EXCLUDES.some(ex => lower.includes(ex))) return false
@@ -105,6 +128,7 @@ Your job:
 - Know JAMB, WAEC, NECO, BECE syllabuses inside out
 - For university students, cover 100L-600L course content
 - Never just give an answer — always explain the reasoning
+- MATHEMATICS: always give full step-by-step working, write the formula/rule first, use clear plain-text notation (x^2, sqrt(), a/b, ×, ÷, ≈, π, ≤, ≥), and always finish with the final answer on its own line like "Answer: ...". Verify by substituting back when possible.
 - When the student sends an image, read it carefully and explain/answer based on what you see
 - When asked to generate an image, you are the image-generation mode and must create the picture`
 }
@@ -251,6 +275,8 @@ export async function POST(request: NextRequest) {
   }
 
   const text = lastMessage?.content || ''
+  const mathRequested = isMathQuestion(text)
+  const systemText = mathRequested ? `${systemPrompt}\n\n${MATH_INSTRUCTION}` : systemPrompt
 
   try {
     // ---- IMAGE GENERATION path ----
@@ -259,7 +285,7 @@ export async function POST(request: NextRequest) {
       for (const modelName of IMAGE_GEN_MODELS) {
         try {
           const geminiBody = {
-            system_instruction: { parts: [{ text: systemPrompt }] },
+            system_instruction: { parts: [{ text: systemText }] },
             contents: [
               ...messages.slice(0, -1).map((m: any) => ({
                 role: m.role === 'assistant' ? 'model' : 'user',
@@ -309,7 +335,7 @@ export async function POST(request: NextRequest) {
     for (const modelName of DEFAULT_GEMINI_MODELS) {
       try {
         const geminiBody = {
-          system_instruction: { parts: [{ text: systemPrompt }] },
+          system_instruction: { parts: [{ text: systemText }] },
           contents: [
             ...messages.slice(0, -1).map((m: any) => ({
               role: m.role === 'assistant' ? 'model' : 'user',

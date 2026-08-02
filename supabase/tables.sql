@@ -234,6 +234,8 @@ CREATE TABLE IF NOT EXISTS ai_conversations (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+ALTER TABLE ai_conversations ADD COLUMN IF NOT EXISTS title TEXT;
+
 -- ============================================================
 -- ROW LEVEL SECURITY
 -- ============================================================

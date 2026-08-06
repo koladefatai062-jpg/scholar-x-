@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     androidScheme: 'https',
-    url: 'https://scholarx.vercel.app',
+    url: 'https://scholar-x-project-slgz.vercel.app',
     cleartext: false,
   },
   plugins: {

@@ -351,15 +351,60 @@ DROP POLICY IF EXISTS "groups_select" ON groups;
 CREATE POLICY "groups_select" ON groups FOR SELECT USING (auth.role() = 'authenticated');
 DROP POLICY IF EXISTS "groups_insert" ON groups;
 CREATE POLICY "groups_insert" ON groups FOR INSERT WITH CHECK (auth.uid() = created_by);
+-- admins can update their groups' name / subject / description
+DROP POLICY IF EXISTS "groups_admin_update" ON groups;
+CREATE POLICY "groups_admin_update" ON groups
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM group_members gm
+      WHERE gm.group_id = groups.id AND gm.user_id = auth.uid() AND gm.role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM group_members gm
+      WHERE gm.group_id = groups.id AND gm.user_id = auth.uid() AND gm.role = 'admin'
+    )
+  );
 
+-- members: group members can see the roster of groups they belong to
 DROP POLICY IF EXISTS "members_select_own" ON group_members;
-CREATE POLICY "members_select_own" ON group_members FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "members_select_group" ON group_members
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM group_members gm
+      WHERE gm.group_id = group_members.group_id AND gm.user_id = auth.uid()
+    )
+  );
 DROP POLICY IF EXISTS "members_insert" ON group_members;
 CREATE POLICY "members_insert" ON group_members FOR INSERT WITH CHECK (auth.uid() = user_id);
 DROP POLICY IF EXISTS "members_delete" ON group_members;
 CREATE POLICY "members_delete" ON group_members FOR DELETE USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "members_update_own" ON group_members;
 CREATE POLICY "members_update_own" ON group_members FOR UPDATE USING (auth.uid() = user_id);
+-- admins can remove members and change roles in their groups
+DROP POLICY IF EXISTS "members_admin_delete" ON group_members;
+CREATE POLICY "members_admin_delete" ON group_members
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM group_members gm
+      WHERE gm.group_id = group_members.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
+    )
+  );
+DROP POLICY IF EXISTS "members_admin_update" ON group_members;
+CREATE POLICY "members_admin_update" ON group_members
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM group_members gm
+      WHERE gm.group_id = group_members.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM group_members gm
+      WHERE gm.group_id = group_members.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
+    )
+  );
 
 DROP POLICY IF EXISTS "messages_select" ON group_messages;
 CREATE POLICY "messages_select" ON group_messages FOR SELECT USING (auth.role() = 'authenticated');
@@ -369,6 +414,21 @@ DROP POLICY IF EXISTS "messages_update_own" ON group_messages;
 CREATE POLICY "messages_update_own" ON group_messages FOR UPDATE USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "messages_delete_own" ON group_messages;
 CREATE POLICY "messages_delete_own" ON group_messages FOR DELETE USING (auth.uid() = user_id);
+-- admins can soft-delete any message in their group
+DROP POLICY IF EXISTS "messages_admin_update" ON group_messages;
+CREATE POLICY "messages_admin_update" ON group_messages
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM group_members gm
+      WHERE gm.group_id = group_messages.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM group_members gm
+      WHERE gm.group_id = group_messages.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
+    )
+  );
 
 DROP POLICY IF EXISTS "reads_select_own" ON group_message_reads;
 CREATE POLICY "reads_select_own" ON group_message_reads FOR SELECT USING (auth.uid() = user_id);
@@ -379,6 +439,8 @@ DROP POLICY IF EXISTS "push_tokens_select_own" ON push_tokens;
 CREATE POLICY "push_tokens_select_own" ON push_tokens FOR SELECT USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "push_tokens_insert_own" ON push_tokens;
 CREATE POLICY "push_tokens_insert_own" ON push_tokens FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "push_tokens_update_own" ON push_tokens;
+CREATE POLICY "push_tokens_update_own" ON push_tokens FOR UPDATE USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "push_tokens_delete_own" ON push_tokens;
 CREATE POLICY "push_tokens_delete_own" ON push_tokens FOR DELETE USING (auth.uid() = user_id);
 

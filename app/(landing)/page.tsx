@@ -122,9 +122,14 @@ export default function LandingPage() {
       {/* FEATURES */}
       <section style={{ padding: '80px 24px', background: C.surface }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ marginBottom: 44 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: C.cyan, letterSpacing: 2, textTransform: 'uppercase' }}>What's inside</span>
-            <h2 style={{ fontSize: 'clamp(24px,4vw,42px)', fontWeight: 800, color: C.white, marginTop: 6, letterSpacing: '-1px' }}>Built for how students actually study</h2>
+          <div style={{ marginBottom: 44, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.cyan, letterSpacing: 2, textTransform: 'uppercase' }}>What's inside</span>
+              <h2 style={{ fontSize: 'clamp(24px,4vw,42px)', fontWeight: 800, color: C.white, marginTop: 6, letterSpacing: '-1px' }}>Built for how students actually study</h2>
+            </div>
+            <button onClick={() => router.push('/features')} style={{ background: 'none', border: `1px solid ${C.border}`, color: C.text, padding: '9px 18px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+              See all features <ArrowRight size={14} />
+            </button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(290px,1fr))', gap: 18 }}>
             {features.map(({ icon, title, body }) => (

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import Logo from '@/components/Logo'
 import Avatar from '@/components/Avatar'
+import PushNotifications from '@/components/PushNotifications'
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard' },
@@ -74,6 +75,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: C.bg, fontFamily: "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
+      <PushNotifications />
 
       {/* DESKTOP SIDEBAR */}
       {!isMobile && (

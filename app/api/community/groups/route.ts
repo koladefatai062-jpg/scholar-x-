@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
-// GET — fetch active groups
+// GET — fetch active groups with join status + unread counts
 export async function GET(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -15,26 +15,46 @@ export async function GET(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Get groups the user has joined
   const { data: memberships } = await supabase
     .from('group_members')
-    .select('group_id')
+    .select('group_id, role, last_read_at')
     .eq('user_id', user.id)
 
+  const membershipMap = new Map(memberships?.map(m => [m.group_id, m]) || [])
   const joinedGroupIds = memberships?.map(m => m.group_id) || []
 
-  // Get user's membership count
-  const membershipCount = joinedGroupIds.length
-
-  const groupsWithStatus = groups?.map(g => ({
-    ...g,
-    is_joined: joinedGroupIds.includes(g.id),
+  // Unread counts for joined groups
+  const unreadByGroup: Record<string, number> = {}
+  await Promise.all(joinedGroupIds.map(async (gid) => {
+    const m = membershipMap.get(gid)
+    if (!m) return
+    const query = supabase
+      .from('group_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('group_id', gid)
+      .neq('user_id', user.id)
+    if (m.last_read_at) query.gt('created_at', m.last_read_at)
+    const { count } = await query
+    unreadByGroup[gid] = count || 0
   }))
 
-  return NextResponse.json({ groups: groupsWithStatus || [], membership_count: membershipCount })
+  const groupsWithStatus = groups?.map(g => {
+    const m = membershipMap.get(g.id)
+    return {
+      ...g,
+      is_joined: Boolean(m),
+      my_role: m?.role || null,
+      unread_count: unreadByGroup[g.id] || 0,
+    }
+  })
+
+  return NextResponse.json({
+    groups: groupsWithStatus || [],
+    membership_count: joinedGroupIds.length,
+  })
 }
 
-// POST — create group request (premium only)
+// POST — create group request (premium only) and auto-add creator as admin member
 export async function POST(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()

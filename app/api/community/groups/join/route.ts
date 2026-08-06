@@ -45,7 +45,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Join group
-  await supabase.from('group_members').insert({ user_id: user.id, group_id })
+  const { data: groupInfo } = await supabase.from('groups').select('created_by').eq('id', group_id).single()
+  const role = groupInfo?.created_by === user.id ? 'admin' : 'member'
+  await supabase.from('group_members').insert({ user_id: user.id, group_id, role })
   await supabase.rpc('increment_group_members', { p_group_id: group_id })
 
   return NextResponse.json({ joined: true })

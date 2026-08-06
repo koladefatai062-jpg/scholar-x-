@@ -149,9 +149,14 @@ CREATE TABLE IF NOT EXISTS group_members (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   group_id UUID REFERENCES groups(id) ON DELETE CASCADE NOT NULL,
+  role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+  last_read_at TIMESTAMPTZ DEFAULT now(),
   created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(user_id, group_id)
 );
+
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member';
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMPTZ DEFAULT now();
 
 CREATE TABLE IF NOT EXISTS group_messages (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -162,7 +167,33 @@ CREATE TABLE IF NOT EXISTS group_messages (
   file_name TEXT,
   file_type TEXT,
   file_size INTEGER,
+  reply_to_id UUID REFERENCES group_messages(id) ON DELETE SET NULL,
+  edited_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ,
+  read_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE group_messages ADD COLUMN IF NOT EXISTS reply_to_id UUID REFERENCES group_messages(id) ON DELETE SET NULL;
+ALTER TABLE group_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
+ALTER TABLE group_messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE group_messages ADD COLUMN IF NOT EXISTS read_count INTEGER DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS group_message_reads (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  message_id UUID REFERENCES group_messages(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  read_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(message_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS push_tokens (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  token TEXT NOT NULL,
+  platform TEXT DEFAULT 'web',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, token)
 );
 
 -- ------------------------------------------------------------
@@ -254,6 +285,8 @@ ALTER TABLE post_likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE group_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE group_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE group_message_reads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE push_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE term_results ENABLE ROW LEVEL SECURITY;
@@ -325,11 +358,29 @@ DROP POLICY IF EXISTS "members_insert" ON group_members;
 CREATE POLICY "members_insert" ON group_members FOR INSERT WITH CHECK (auth.uid() = user_id);
 DROP POLICY IF EXISTS "members_delete" ON group_members;
 CREATE POLICY "members_delete" ON group_members FOR DELETE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "members_update_own" ON group_members;
+CREATE POLICY "members_update_own" ON group_members FOR UPDATE USING (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "messages_select" ON group_messages;
 CREATE POLICY "messages_select" ON group_messages FOR SELECT USING (auth.role() = 'authenticated');
 DROP POLICY IF EXISTS "messages_insert" ON group_messages;
 CREATE POLICY "messages_insert" ON group_messages FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "messages_update_own" ON group_messages;
+CREATE POLICY "messages_update_own" ON group_messages FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "messages_delete_own" ON group_messages;
+CREATE POLICY "messages_delete_own" ON group_messages FOR DELETE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "reads_select_own" ON group_message_reads;
+CREATE POLICY "reads_select_own" ON group_message_reads FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "reads_insert_own" ON group_message_reads;
+CREATE POLICY "reads_insert_own" ON group_message_reads FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "push_tokens_select_own" ON push_tokens;
+CREATE POLICY "push_tokens_select_own" ON push_tokens FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "push_tokens_insert_own" ON push_tokens;
+CREATE POLICY "push_tokens_insert_own" ON push_tokens FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "push_tokens_delete_own" ON push_tokens;
+CREATE POLICY "push_tokens_delete_own" ON push_tokens FOR DELETE USING (auth.uid() = user_id);
 
 -- payments: own only
 DROP POLICY IF EXISTS "payments_select_own" ON payments;
@@ -404,6 +455,29 @@ RETURNS void LANGUAGE sql SECURITY DEFINER AS $$
   UPDATE groups SET member_count = GREATEST(member_count - 1, 0) WHERE id = p_group_id;
 $$;
 
+DROP FUNCTION IF EXISTS mark_group_messages_read(uuid);
+CREATE OR REPLACE FUNCTION mark_group_messages_read(p_group_id UUID)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  p_user_id UUID := auth.uid();
+BEGIN
+  IF p_user_id IS NULL THEN RETURN; END IF;
+
+  UPDATE group_members SET last_read_at = now()
+  WHERE group_id = p_group_id AND user_id = p_user_id;
+
+  WITH inserted AS (
+    INSERT INTO group_message_reads (message_id, user_id)
+    SELECT m.id, p_user_id FROM group_messages m
+    WHERE m.group_id = p_group_id AND m.user_id <> p_user_id
+    ON CONFLICT (message_id, user_id) DO NOTHING
+    RETURNING message_id
+  )
+  UPDATE group_messages m SET read_count = read_count + 1
+  FROM inserted i WHERE m.id = i.message_id;
+END;
+$$;
+
 -- ============================================================
 -- Realtime: publish community tables so feed + group chat update live
 -- ============================================================
@@ -431,6 +505,10 @@ DO $$ BEGIN
   ALTER PUBLICATION supabase_realtime ADD TABLE group_messages;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE group_message_reads;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 ALTER TABLE posts REPLICA IDENTITY FULL;
 ALTER TABLE post_likes REPLICA IDENTITY FULL;
@@ -438,6 +516,7 @@ ALTER TABLE comments REPLICA IDENTITY FULL;
 ALTER TABLE groups REPLICA IDENTITY FULL;
 ALTER TABLE group_members REPLICA IDENTITY FULL;
 ALTER TABLE group_messages REPLICA IDENTITY FULL;
+ALTER TABLE group_message_reads REPLICA IDENTITY FULL;
 
 -- ============================================================
 -- Auto-create profile on signup

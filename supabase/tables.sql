@@ -592,3 +592,24 @@ CREATE POLICY "avatars_update_own" ON storage.objects
 DROP POLICY IF EXISTS "avatars_delete_own" ON storage.objects;
 CREATE POLICY "avatars_delete_own" ON storage.objects
   FOR DELETE USING (bucket_id = 'avatars' AND auth.uid() = (storage.foldername(name))[1]::uuid);
+
+-- ============================================================
+-- Waitlist (public signup list — owner gets email alerts)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS waitlist (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  full_name TEXT,
+  email TEXT NOT NULL UNIQUE,
+  level TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "waitlist_insert_public" ON waitlist;
+CREATE POLICY "waitlist_insert_public" ON waitlist
+  FOR INSERT
+  WITH CHECK (email ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+-- No SELECT/UPDATE/DELETE policies: the list is private,
+-- viewable only via the Supabase dashboard or service role.

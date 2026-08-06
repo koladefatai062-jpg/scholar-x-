@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Send, ArrowLeft, Users, Paperclip, Lock, MoreVertical, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck, X, UserMinus, Shield, Info, Edit3 } from 'lucide-react'
+import { Send, ArrowLeft, Users, Paperclip, Lock, MoreVertical, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck, X, UserMinus, Shield, Info, Edit3, Download, Mail, Crown } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import Avatar from '@/components/Avatar'
 
@@ -18,7 +18,8 @@ const MSG_SELECT = `*, users (full_name, is_premium, avatar_url), reply:reply_to
 interface Member {
   id: string
   role: string
-  users: { id: string; full_name: string; email: string; avatar_url: string | null; is_premium: boolean }
+  created_at?: string | null
+  users: { id: string; full_name: string; email: string; avatar_url: string | null; is_premium: boolean; level?: string | null; role?: string | null }
 }
 
 interface Message {
@@ -72,6 +73,8 @@ export default function GroupChatPage() {
   const [editText, setEditText] = useState('')
   const [forwardMsg, setForwardMsg] = useState<Message | null>(null)
   const [infoOpen, setInfoOpen] = useState(false)
+  const [profileUser, setProfileUser] = useState<Member | null>(null)
+  const [lightbox, setLightbox] = useState<{ url: string; name: string } | null>(null)
   const [actionMsg, setActionMsg] = useState<Message | null>(null)
   const [groupForm, setGroupForm] = useState({ name: '', subject: '', description: '' })
   const [savingGroup, setSavingGroup] = useState(false)
@@ -177,12 +180,13 @@ export default function GroupChatPage() {
   const fetchMembers = async () => {
     const { data } = await supabase
       .from('group_members')
-      .select(`id, role, users (id, full_name, email, avatar_url, is_premium)`)
+      .select(`id, role, created_at, users (id, full_name, email, avatar_url, is_premium, level, role)`)
       .eq('group_id', groupId)
       .order('created_at', { ascending: true })
     const mapped: Member[] = (data ?? []).map((m: any) => ({
       id: m.id,
       role: m.role,
+      created_at: m.created_at,
       users: Array.isArray(m.users) ? m.users[0] : m.users,
     }))
     setMembers(mapped)
@@ -366,6 +370,38 @@ export default function GroupChatPage() {
     return d.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
+  const downloadFile = async (url: string, name?: string | null) => {
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error()
+      const blob = await res.blob()
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = name || 'download'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(link.href)
+    } catch {
+      window.open(url, '_blank')
+    }
+  }
+
+  const openProfile = (m: Member) => {
+    setProfileUser(m)
+    setInfoOpen(false)
+  }
+
+  const memberFromUser = (userId: string, fullName?: string): Member => {
+    const found = members.find(m => m.users.id === userId)
+    if (found) return found
+    return {
+      id: userId,
+      role: 'member',
+      users: { id: userId, full_name: fullName || 'Member', email: '', avatar_url: null, is_premium: false },
+    }
+  }
+
   const typingNames = Array.from(typingIds)
     .map(id => members.find(m => m.users.id === id)?.users.full_name || 'Someone')
     .slice(0, 2)
@@ -380,11 +416,16 @@ export default function GroupChatPage() {
       <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, maxWidth: '100%' }}>
           {!isOwn && (
-            <div style={{ flexShrink: 0 }}>
+            <button onClick={() => openProfile(memberFromUser(msg.user_id, msg.users?.full_name))} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
               <Avatar name={msg.users?.full_name} avatarUrl={msg.users?.avatar_url} size={28} fontSize={11} />
-            </div>
+            </button>
           )}
           <div style={{ maxWidth: isMobile ? '82vw' : '62%' }}>
+            {!isOwn && (
+              <button onClick={() => openProfile(memberFromUser(msg.user_id, msg.users?.full_name))} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'block', margin: '0 0 3px 4px' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: C.cyan }}>{msg.users?.full_name || 'Member'}</span>
+              </button>
+            )}
             {msg.reply && (
               <div style={{ background: 'rgba(255,255,255,0.06)', borderLeft: `3px solid ${isOwn ? 'rgba(255,255,255,0.5)' : C.accent}`, borderRadius: 6, padding: '6px 10px', marginBottom: 6, fontSize: 12 }}>
                 <div style={{ color: isOwn ? 'rgba(255,255,255,0.75)' : C.accent, fontWeight: 700, marginBottom: 2 }}>
@@ -401,11 +442,32 @@ export default function GroupChatPage() {
               ) : (
                 <>
                   {msg.content && <p style={{ fontSize: 14, color: C.text, lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</p>}
-                  {msg.file_url && msg.file_type === 'image' && <img src={msg.file_url} alt={msg.file_name || 'image'} style={{ maxWidth: 260, maxHeight: 300, borderRadius: 8, display: 'block', marginTop: msg.content ? 8 : 0 }} />}
+                  {msg.file_url && msg.file_type === 'image' && (
+                    <>
+                      <button onClick={() => setLightbox({ url: msg.file_url!, name: msg.file_name || 'image' })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'zoom-in', display: 'block', marginTop: msg.content ? 8 : 0 }}>
+                        <img src={msg.file_url} alt={msg.file_name || 'image'} style={{ maxWidth: '100%', maxHeight: 340, borderRadius: 8, display: 'block' }} />
+                      </button>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 6, justifyContent: 'flex-end' }}>
+                        <button onClick={() => downloadFile(msg.file_url!, msg.file_name)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: `1px solid ${isOwn ? 'rgba(255,255,255,0.4)' : C.border}`, color: isOwn ? '#fff' : C.muted, cursor: 'pointer', padding: '4px 8px', borderRadius: 6, fontSize: 11 }}>
+                          <Download size={12} /> Save
+                        </button>
+                      </div>
+                    </>
+                  )}
                   {msg.file_url && msg.file_type === 'pdf' && (
-                    <a href={msg.file_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, color: isOwn ? '#fff' : C.cyan, textDecoration: 'none', fontSize: 13, fontWeight: 600, marginTop: msg.content ? 8 : 0 }}>
-                      📄 {msg.file_name || 'View PDF'}
-                    </a>
+                    <>
+                      <div style={{ marginTop: msg.content ? 8 : 0, position: 'relative' }}>
+                        <iframe src={msg.file_url} title={msg.file_name || 'PDF'} style={{ width: '100%', height: 320, borderRadius: 8, border: `1px solid ${isOwn ? 'rgba(255,255,255,0.3)' : C.border}`, background: '#fff' }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 6, justifyContent: 'flex-end' }}>
+                        <button onClick={() => downloadFile(msg.file_url!, msg.file_name)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: `1px solid ${isOwn ? 'rgba(255,255,255,0.4)' : C.border}`, color: isOwn ? '#fff' : C.muted, cursor: 'pointer', padding: '4px 8px', borderRadius: 6, fontSize: 11 }}>
+                          <Download size={12} /> Save
+                        </button>
+                        <a href={msg.file_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, color: isOwn ? '#fff' : C.cyan, textDecoration: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                          Open ↗
+                        </a>
+                      </div>
+                    </>
                   )}
                   <div style={{ fontSize: 10, color: isOwn ? 'rgba(255,255,255,0.6)' : C.muted, marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                     <span>{timeStr(msg.created_at)}{msg.edited_at ? ' · edited' : ''}</span>
@@ -565,16 +627,18 @@ export default function GroupChatPage() {
               const isMe = m.users.id === currentUserId
               return (
                 <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: `1px solid ${C.border}22` }}>
-                  <Avatar name={m.users.full_name} avatarUrl={m.users.avatar_url} size={34} fontSize={12} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: C.white, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.users.full_name || 'Student'}{isMe ? ' (you)' : ''}</span>
-                      {m.role === 'admin' && <span style={{ fontSize: 9, padding: '2px 6px', background: `${C.accent}22`, borderRadius: 4, color: C.accent, fontWeight: 700 }}>ADMIN</span>}
+                  <button onClick={() => openProfile(m)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, textAlign: 'left' }}>
+                    <Avatar name={m.users.full_name} avatarUrl={m.users.avatar_url} size={34} fontSize={12} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.white, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.users.full_name || 'Student'}{isMe ? ' (you)' : ''}</span>
+                        {m.role === 'admin' && <span style={{ fontSize: 9, padding: '2px 6px', background: `${C.accent}22`, borderRadius: 4, color: C.accent, fontWeight: 700 }}>ADMIN</span>}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.muted }}>
+                        {onlineIds.has(m.users.id) ? <span style={{ color: C.green }}>● Online</span> : 'Offline'}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 11, color: C.muted }}>
-                      {onlineIds.has(m.users.id) ? <span style={{ color: C.green }}>● Online</span> : 'Offline'}
-                    </div>
-                  </div>
+                  </button>
                   {isAdmin && !isMe && (
                     <div style={{ display: 'flex', gap: 6 }}>
                       {m.role !== 'admin' && (
@@ -608,6 +672,61 @@ export default function GroupChatPage() {
             </div>
             <ForwardPicker groupId={groupId} onSelect={forwardSend} />
           </div>
+        </div>
+      )}
+
+      {/* Member profile modal */}
+      {profileUser && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={e => { if (e.target === e.currentTarget) setProfileUser(null) }}>
+          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 24, width: '100%', maxWidth: 360, textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setProfileUser(null)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+              <Avatar name={profileUser.users.full_name} avatarUrl={profileUser.users.avatar_url} size={88} fontSize={32} />
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: C.white }}>{profileUser.users.full_name || 'Student'}</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
+              {onlineIds.has(profileUser.users.id) ? <span style={{ color: C.green }}>● Online</span> : 'Offline'}
+              {profileUser.role === 'admin' && <span style={{ color: C.accent, fontWeight: 700 }}> · Group admin</span>}
+            </div>
+
+            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left' }}>
+              {profileUser.users.email && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.text, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 12px' }}>
+                  <Mail size={14} color={C.muted} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profileUser.users.email}</span>
+                </div>
+              )}
+              {profileUser.users.level && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.text, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 12px' }}>
+                  <Users size={14} color={C.muted} /> Level: {profileUser.users.level}
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: profileUser.users.is_premium ? C.gold : C.muted, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 12px' }}>
+                <Crown size={14} /> {profileUser.users.is_premium ? 'Premium member' : 'Free member'}
+              </div>
+              {profileUser.created_at && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.text, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 12px' }}>
+                  <Shield size={14} color={C.muted} /> Joined {new Date(profileUser.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image lightbox */}
+      {lightbox && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', padding: 20 }} onClick={e => { if (e.target === e.currentTarget) setLightbox(null) }}>
+          <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 8 }}>
+            <button onClick={() => downloadFile(lightbox.url, lightbox.name)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', cursor: 'pointer', padding: '8px 12px', borderRadius: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Download size={14} /> Save to device
+            </button>
+            <button onClick={() => setLightbox(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', cursor: 'pointer', padding: 8, borderRadius: 8, display: 'flex', alignItems: 'center' }}>
+              <X size={16} />
+            </button>
+          </div>
+          <img src={lightbox.url} alt={lightbox.name} style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: 8, objectFit: 'contain' }} />
         </div>
       )}
 

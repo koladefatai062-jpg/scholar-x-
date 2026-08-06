@@ -157,6 +157,7 @@ CREATE TABLE IF NOT EXISTS group_members (
 
 ALTER TABLE group_members ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member';
 ALTER TABLE group_members ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMPTZ DEFAULT now();
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
 
 CREATE TABLE IF NOT EXISTS group_messages (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -354,28 +355,24 @@ CREATE POLICY "groups_insert" ON groups FOR INSERT WITH CHECK (auth.uid() = crea
 -- admins can update their groups' name / subject / description
 DROP POLICY IF EXISTS "groups_admin_update" ON groups;
 CREATE POLICY "groups_admin_update" ON groups
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = groups.id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = groups.id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  );
+  FOR UPDATE USING (public.is_group_admin(groups.id))
+  WITH CHECK (public.is_group_admin(groups.id));
+
+-- membership helpers (SECURITY DEFINER avoids RLS self-reference recursion)
+CREATE OR REPLACE FUNCTION public.is_group_member(p_group_id UUID)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (SELECT 1 FROM group_members gm WHERE gm.group_id = p_group_id AND gm.user_id = auth.uid());
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_group_admin(p_group_id UUID)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (SELECT 1 FROM group_members gm WHERE gm.group_id = p_group_id AND gm.user_id = auth.uid() AND gm.role = 'admin');
+$$;
 
 -- members: group members can see the roster of groups they belong to
 DROP POLICY IF EXISTS "members_select_own" ON group_members;
 CREATE POLICY "members_select_group" ON group_members
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_members.group_id AND gm.user_id = auth.uid()
-    )
-  );
+  FOR SELECT USING (public.is_group_member(group_members.group_id));
 DROP POLICY IF EXISTS "members_insert" ON group_members;
 CREATE POLICY "members_insert" ON group_members FOR INSERT WITH CHECK (auth.uid() = user_id);
 DROP POLICY IF EXISTS "members_delete" ON group_members;
@@ -385,26 +382,11 @@ CREATE POLICY "members_update_own" ON group_members FOR UPDATE USING (auth.uid()
 -- admins can remove members and change roles in their groups
 DROP POLICY IF EXISTS "members_admin_delete" ON group_members;
 CREATE POLICY "members_admin_delete" ON group_members
-  FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_members.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  );
+  FOR DELETE USING (public.is_group_admin(group_members.group_id));
 DROP POLICY IF EXISTS "members_admin_update" ON group_members;
 CREATE POLICY "members_admin_update" ON group_members
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_members.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_members.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  );
+  FOR UPDATE USING (public.is_group_admin(group_members.group_id))
+  WITH CHECK (public.is_group_admin(group_members.group_id));
 
 DROP POLICY IF EXISTS "messages_select" ON group_messages;
 CREATE POLICY "messages_select" ON group_messages FOR SELECT USING (auth.role() = 'authenticated');
@@ -417,18 +399,8 @@ CREATE POLICY "messages_delete_own" ON group_messages FOR DELETE USING (auth.uid
 -- admins can soft-delete any message in their group
 DROP POLICY IF EXISTS "messages_admin_update" ON group_messages;
 CREATE POLICY "messages_admin_update" ON group_messages
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_messages.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_messages.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  );
+  FOR UPDATE USING (public.is_group_admin(group_messages.group_id))
+  WITH CHECK (public.is_group_admin(group_messages.group_id));
 
 DROP POLICY IF EXISTS "reads_select_own" ON group_message_reads;
 CREATE POLICY "reads_select_own" ON group_message_reads FOR SELECT USING (auth.uid() = user_id);

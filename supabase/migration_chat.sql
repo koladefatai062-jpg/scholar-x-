@@ -12,6 +12,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
 ALTER TABLE group_members ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member';
 ALTER TABLE group_members ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMPTZ DEFAULT now();
+ALTER TABLE group_members ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
 
 ALTER TABLE group_messages ADD COLUMN IF NOT EXISTS reply_to_id UUID REFERENCES group_messages(id) ON DELETE SET NULL;
 ALTER TABLE group_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
@@ -60,73 +61,44 @@ CREATE POLICY "push_tokens_delete_own" ON push_tokens FOR DELETE USING (auth.uid
 
 -- ------------------------------------------------------------
 -- 4. Broader roster / admin policies on existing tables
--- (replaces the self-only SELECT so the member list works)
+-- (membership checks go through SECURITY DEFINER helpers to
+--  avoid infinite recursion in RLS)
 -- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.is_group_member(p_group_id UUID)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (SELECT 1 FROM group_members gm WHERE gm.group_id = p_group_id AND gm.user_id = auth.uid());
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_group_admin(p_group_id UUID)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (SELECT 1 FROM group_members gm WHERE gm.group_id = p_group_id AND gm.user_id = auth.uid() AND gm.role = 'admin');
+$$;
+
 DROP POLICY IF EXISTS "members_select_own" ON group_members;
 CREATE POLICY "members_select_group" ON group_members
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_members.group_id AND gm.user_id = auth.uid()
-    )
-  );
+  FOR SELECT USING (public.is_group_member(group_members.group_id));
 
 -- admins can remove members and change roles
 DROP POLICY IF EXISTS "members_admin_delete" ON group_members;
 CREATE POLICY "members_admin_delete" ON group_members
-  FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_members.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  );
+  FOR DELETE USING (public.is_group_admin(group_members.group_id));
 
 DROP POLICY IF EXISTS "members_admin_update" ON group_members;
 CREATE POLICY "members_admin_update" ON group_members
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_members.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_members.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  );
+  FOR UPDATE USING (public.is_group_admin(group_members.group_id))
+  WITH CHECK (public.is_group_admin(group_members.group_id));
 
 -- admins can update their groups' name / subject / description
 DROP POLICY IF EXISTS "groups_admin_update" ON groups;
 CREATE POLICY "groups_admin_update" ON groups
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = groups.id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = groups.id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  );
+  FOR UPDATE USING (public.is_group_admin(groups.id))
+  WITH CHECK (public.is_group_admin(groups.id));
 
 -- admins can soft-delete any message in their group
 DROP POLICY IF EXISTS "messages_admin_update" ON group_messages;
 CREATE POLICY "messages_admin_update" ON group_messages
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_messages.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_messages.group_id AND gm.user_id = auth.uid() AND gm.role = 'admin'
-    )
-  );
+  FOR UPDATE USING (public.is_group_admin(group_messages.group_id))
+  WITH CHECK (public.is_group_admin(group_messages.group_id));
 
 -- ------------------------------------------------------------
 -- 5. Read-tracking RPC (SECURITY DEFINER so it bypasses RLS)

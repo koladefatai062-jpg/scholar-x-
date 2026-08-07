@@ -45,9 +45,13 @@ export default function AdminNewsPage() {
     setScraping(true)
     setScrapeResult(null)
     try {
-      const res = await fetch('/api/scraper/news')
+      const res = await fetch('/api/admin/scrape', { method: 'POST' })
       const data = await res.json()
-      setScrapeResult(data.success ? `✅ Scraped ${data.scraped}, inserted ${data.inserted}, skipped ${data.skipped}` : `❌ ${data.message || 'No articles found'}`)
+      if (data.success) {
+        setScrapeResult(`✅ Scraped ${data.scraped}, inserted ${data.inserted}, skipped ${data.skipped}${data.errors?.length ? ` · ${data.errors.length} source(s) failed` : ''}`)
+      } else {
+        setScrapeResult(`❌ ${data.message || 'No articles found'}`)
+      }
       if (data.inserted > 0) fetchNews()
     } catch { setScrapeResult('❌ Scraper failed') }
     setScraping(false)

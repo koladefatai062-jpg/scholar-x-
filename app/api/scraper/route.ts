@@ -1,16 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
 
-// This route scrapes news from multiple Nigerian education sites
-// Call it via cron job or manually from admin panel
+// This route scrapes education news from Nigerian sites.
+// Call it via cron job or manually with `Authorization: Bearer <CRON_SECRET>`.
 // GET /api/scraper
 
-const TIMEOUT = 30000
+// Allow the function to run longer than Vercel's default so slow sites don't kill it.
+export const maxDuration = 60
+
+const TIMEOUT = 20000
+const UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
 const HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'User-Agent': UA,
   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
   'Accept-Language': 'en-US,en;q=0.5',
 }
+
+interface Source {
+  name: string
+  url: string
+  base: string
+  max: number
+  require?: string[]
+}
+
+// Sources verified to server-render real education article links.
+const SOURCES: Source[] = [
+  {
+    name: 'Punch',
+    url: 'https://punchng.com/topics/education/',
+    base: 'https://punchng.com',
+    max: 8,
+  },
+  {
+    name: 'Premium Times',
+    url: 'https://www.premiumtimesng.com/category/education',
+    base: 'https://www.premiumtimesng.com',
+    max: 8,
+  },
+  {
+    name: 'Tribune',
+    url: 'https://www.tribuneonlineng.com/category/education/',
+    base: 'https://www.tribuneonlineng.com',
+    max: 8,
+  },
+  {
+    name: 'JAMB',
+    url: 'https://www.jamb.gov.ng/news.aspx',
+    base: 'https://www.jamb.gov.ng',
+    max: 6,
+    require: ['jamb', 'utme'],
+  },
+]
+
+const KEYWORDS = [
+  'jamb', 'waec', 'neco', 'bece', 'utme', 'admission', 'scholarship', 'university',
+  'exam', 'result', 'registration', 'student', 'polytechnic', 'nysc', 'campus',
+  'tuition', 'asuu', 'strike', 'school', 'education', 'academic', 'postgraduate',
+  'post-utme', 'lecturer', 'course', 'matriculation', 'graduation',
+]
+
+const BAD = [
+  'privacy', 'terms', 'cookie', 'about us', 'contact us', 'advertise', 'subscribe',
+  'sign in', 'sign up', 'login', 'log in', 'register', 'download', 'app', 'software',
+  'price', 'menu', 'follow', 'facebook', 'twitter', 'whatsapp', 'instagram',
+  'youtube', 'category', 'tag', 'search', 'home', 'newsletter', 'advert', 'job',
+  'career', 'team', 'policy', 'archives', 'more', 'click here', 'read more',
+]
 
 export async function GET(request: NextRequest) {
   // Verify this is called by cron or admin — check secret key
@@ -22,282 +80,140 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createAdminClient()
-  const results: any[] = []
   const errors: string[] = []
 
-  // ── SCRAPE MYSCHOOL.NG ─────────────────────────────────────────────────
-  try {
-    const res = await fetch('https://myschool.ng/classroom/news', {
-      headers: HEADERS,
-      signal: AbortSignal.timeout(TIMEOUT),
+  // Fetch all sources in parallel so a slow site can't stack timeouts.
+  const results = await Promise.allSettled(
+    SOURCES.map(async (src) => {
+      const res = await fetch(src.url, { headers: HEADERS, signal: AbortSignal.timeout(TIMEOUT) })
+      if (!res.ok) throw new Error(`${src.name}: HTTP ${res.status}`)
+      const html = await res.text()
+      return extractFromSource(src, html)
     })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const html = await res.text()
-    const articles = parseMyschool(html)
-    results.push(...articles)
-  } catch (err: any) {
-    errors.push(`Myschool.ng: ${err.message}`)
-  }
+  )
 
-  // ── SCRAPE JAMB.GOV.NG ─────────────────────────────────────────────────
-  try {
-    const res = await fetch('https://www.jamb.gov.ng/ExamsDB/UTMENEWS.aspx', {
-      headers: HEADERS,
-      signal: AbortSignal.timeout(TIMEOUT),
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const html = await res.text()
-    const articles = parseJAMB(html)
-    results.push(...articles)
-  } catch (err: any) {
-    errors.push(`JAMB: ${err.message}`)
-  }
-
-  // ── NIGERIANSCHOLARS.COM ───────────────────────────────────────────────
-  try {
-    const res = await fetch('https://nigerianscholars.com/tutorials/jamb/', {
-      headers: HEADERS,
-      signal: AbortSignal.timeout(TIMEOUT),
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const html = await res.text()
-    const articles = parseNigerianScholars(html)
-    results.push(...articles)
-  } catch (err: any) {
-    errors.push(`NigerianScholars: ${err.message}`)
-  }
-
-  // ── SCRAPE VANGUARD EDUCATION ──────────────────────────────────────────
-  try {
-    const res = await fetch('https://www.vanguardngr.com/education/', {
-      headers: HEADERS,
-      signal: AbortSignal.timeout(TIMEOUT),
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const html = await res.text()
-    const articles = parseVanguard(html)
-    results.push(...articles)
-  } catch (err: any) {
-    errors.push(`Vanguard: ${err.message}`)
-  }
-
-  // ── SCRAPE PUNCH EDUCATION ─────────────────────────────────────────────
-  try {
-    const res = await fetch('https://punchng.com/topics/education/', {
-      headers: HEADERS,
-      signal: AbortSignal.timeout(TIMEOUT),
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const html = await res.text()
-    const articles = parsePunch(html)
-    results.push(...articles)
-  } catch (err: any) {
-    errors.push(`Punch: ${err.message}`)
-  }
-
-  if (results.length === 0) {
-    return NextResponse.json({
-      message: 'No articles scraped',
-      errors,
-    })
-  }
-
-  // ── DEDUPLICATE + INSERT ───────────────────────────────────────────────
-  let inserted = 0
-  let skipped = 0
-
-  for (const article of results) {
-    // Check if article with same title already exists
-    const { data: existing } = await supabase
-      .from('news')
-      .select('id')
-      .ilike('title', article.title)
-      .limit(1)
-      .single()
-
-    if (existing) {
-      skipped++
-      continue
+  const scraped: any[] = []
+  results.forEach((r, i) => {
+    const src = SOURCES[i]
+    if (r.status === 'fulfilled') {
+      scraped.push(...r.value)
+    } else {
+      errors.push(`${src.name}: ${r.reason?.message || r.reason}`)
     }
+  })
 
-    const { error } = await supabase.from('news').insert({
-      title: article.title,
-      summary: article.summary,
-      source_url: article.source_url,
-      source_name: article.source_name,
-      category: article.category,
-      published_at: article.published_at || new Date().toISOString(),
+  if (scraped.length === 0) {
+    return NextResponse.json({ message: 'No articles scraped', errors })
+  }
+
+  // Load existing titles once instead of querying per article.
+  const existingTitles = new Set<string>()
+  try {
+    let from = 0
+    const pageSize = 1000
+    while (true) {
+      const { data } = await supabase.from('news').select('title').range(from, from + pageSize - 1)
+      if (!data || data.length === 0) break
+      data.forEach((r) => existingTitles.add(String(r.title || '').toLowerCase().trim()))
+      if (data.length < pageSize) break
+      from += pageSize
+    }
+  } catch (e: any) {
+    errors.push(`Dedup load: ${e.message}`)
+  }
+
+  const fresh: any[] = []
+  for (const a of scraped) {
+    const key = a.title.toLowerCase().trim()
+    if (existingTitles.has(key)) continue
+    existingTitles.add(key)
+    fresh.push({
+      title: a.title,
+      summary: a.summary,
+      source_url: a.source_url,
+      source_name: a.source_name,
+      category: a.category,
+      published_at: a.published_at || new Date().toISOString(),
     })
+  }
 
-    if (!error) inserted++
+  let inserted = 0
+  if (fresh.length > 0) {
+    const { error } = await supabase.from('news').insert(fresh.slice(0, 40))
+    if (error) {
+      errors.push(`Insert: ${error.message}`)
+    } else {
+      inserted = fresh.slice(0, 40).length
+    }
   }
 
   return NextResponse.json({
     success: true,
-    scraped: results.length,
+    scraped: scraped.length,
     inserted,
-    skipped,
+    skipped: scraped.length - inserted,
     errors,
   })
 }
 
-// ── PARSERS ────────────────────────────────────────────────────────────────
+// ── EXTRACTION ────────────────────────────────────────────────────────────
 
-function parseMyschool(html: string) {
+function extractFromSource(src: Source, html: string) {
   const articles: any[] = []
+  const seen = new Set<string>()
+  const re = /<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi
 
-  // Extract article titles and links using regex
-  // Myschool uses standard HTML article tags
-  const articleRegex = /<article[^>]*>([\s\S]*?)<\/article>/gi
-  const titleRegex = /<h[23][^>]*><a[^>]*href="([^"]*)"[^>]*>([^<]+)<\/a>/i
-  const summaryRegex = /<p[^>]*class="[^"]*excerpt[^"]*"[^>]*>([^<]+)<\/p>/i
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) {
+    const href = m[1].trim()
+    if (!href || /^(#|javascript:|mailto:|tel:)/i.test(href)) continue
+    if (/\.(css|js|png|jpe?g|gif|webp|svg|pdf|xml)$/i.test(href)) continue
+    if (/get_the_permalink|<\?php|\$\w+\(/i.test(href)) continue
+    if (href.length < 8) continue
 
-  let match
-  while ((match = articleRegex.exec(html)) !== null) {
-    const block = match[1]
-    const titleMatch = titleRegex.exec(block)
-    const summaryMatch = summaryRegex.exec(block)
+    const title = clean(m[2])
+    if (title.length < 15 || title.length > 250) continue
+    const lower = title.toLowerCase()
 
-    if (titleMatch) {
-      const title = titleMatch[2].trim()
-      const url = titleMatch[1].startsWith('http')
-        ? titleMatch[1]
-        : `https://myschool.ng${titleMatch[1]}`
+    // Source-specific keyword requirement (e.g. JAMB official only)
+    if (src.require && !src.require.some((k) => lower.includes(k))) continue
+    if (!KEYWORDS.some((k) => lower.includes(k))) continue
+    if (BAD.some((b) => lower.includes(b))) continue
 
-      articles.push({
-        title,
-        summary: summaryMatch ? summaryMatch[1].trim() : null,
-        source_url: url,
-        source_name: 'Myschool.ng',
-        category: detectCategory(title),
-        published_at: new Date().toISOString(),
-      })
-    }
+    // Skip category/tag listing pages and generic hub links.
+    if (/\/\b(category|topics|tag|archives)\b\//i.test(href)) continue
+    if (seen.has(title)) continue
+    seen.add(title)
+
+    const url = href.startsWith('http') ? href : `${src.base}${href.startsWith('/') ? '' : '/'}${href}`
+    articles.push({
+      title,
+      summary: null,
+      source_url: url,
+      source_name: src.name,
+      category: detectCategory(title),
+      published_at: new Date().toISOString(),
+    })
   }
 
-  // Fallback: extract from heading tags directly
-  if (articles.length === 0) {
-    const headingRegex = /<h[23][^>]*><a[^>]*href="([^"]*)"[^>]*>([^<]{20,200})<\/a>/gi
-    while ((match = headingRegex.exec(html)) !== null) {
-      const title = match[2].trim()
-      const url = match[1].startsWith('http') ? match[1] : `https://myschool.ng${match[1]}`
-      if (isEducationNews(title)) {
-        articles.push({
-          title,
-          summary: null,
-          source_url: url,
-          source_name: 'Myschool.ng',
-          category: detectCategory(title),
-          published_at: new Date().toISOString(),
-        })
-      }
-    }
-  }
-
-  return articles.slice(0, 10) // max 10 per source
+  return articles.slice(0, src.max)
 }
 
-function parseJAMB(html: string) {
-  const articles: any[] = []
-  const linkRegex = /<a[^>]*href="([^"]*)"[^>]*>([^<]{20,200})<\/a>/gi
-
-  let match
-  while ((match = linkRegex.exec(html)) !== null) {
-    const title = match[2].trim()
-    const url = match[1]
-
-    if (isEducationNews(title) && title.toLowerCase().includes('jamb')) {
-      articles.push({
-        title,
-        summary: null,
-        source_url: url.startsWith('http') ? url : `https://www.jamb.gov.ng${url}`,
-        source_name: 'JAMB',
-        category: 'JAMB',
-        published_at: new Date().toISOString(),
-      })
-    }
-  }
-
-  return articles.slice(0, 8)
+function clean(inner: string) {
+  let t = inner
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&#0?39;|&#x27;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/g, ' ')
+  return t.replace(/\s+/g, ' ').trim()
 }
-
-function parseNigerianScholars(html: string) {
-  const articles: any[] = []
-  const headingRegex = /<h[23][^>]*><a[^>]*href="([^"]*)"[^>]*>([^<]{20,200})<\/a>/gi
-
-  let match
-  while ((match = headingRegex.exec(html)) !== null) {
-    const title = match[2].trim()
-    const url = match[1]
-
-    if (isEducationNews(title)) {
-      articles.push({
-        title,
-        summary: null,
-        source_url: url.startsWith('http') ? url : `https://nigerianscholars.com${url}`,
-        source_name: 'NigerianScholars',
-        category: detectCategory(title),
-        published_at: new Date().toISOString(),
-      })
-    }
-  }
-
-  return articles.slice(0, 8)
-}
-
-function parseVanguard(html: string) {
-  const articles: any[] = []
-  const headingRegex = /<h[23][^>]*><a[^>]*href="([^"]*)"[^>]*>([^<]{15,200})<\/a>/gi
-
-  let match
-  while ((match = headingRegex.exec(html)) !== null) {
-    const title = match[2].trim()
-    const url = match[1]
-
-    if (isEducationNews(title)) {
-      articles.push({
-        title,
-        summary: null,
-        source_url: url.startsWith('http') ? url : `https://www.vanguardngr.com${url}`,
-        source_name: 'Vanguard',
-        category: detectCategory(title),
-        published_at: new Date().toISOString(),
-      })
-    }
-  }
-
-  return articles.slice(0, 8)
-}
-
-function parsePunch(html: string) {
-  const articles: any[] = []
-  const headingRegex = /<h[23][^>]*><a[^>]*href="([^"]*)"[^>]*>([^<]{15,200})<\/a>/gi
-
-  let match
-  while ((match = headingRegex.exec(html)) !== null) {
-    const title = match[2].trim()
-    const url = match[1]
-
-    if (isEducationNews(title)) {
-      articles.push({
-        title,
-        summary: null,
-        source_url: url.startsWith('http') ? url : `https://punchng.com${url}`,
-        source_name: 'Punch',
-        category: detectCategory(title),
-        published_at: new Date().toISOString(),
-      })
-    }
-  }
-
-  return articles.slice(0, 8)
-}
-
-// ── HELPERS ────────────────────────────────────────────────────────────────
 
 function detectCategory(title: string): string {
   const t = title.toLowerCase()
-  if (t.includes('jamb') || t.includes('utme') || t.includes('caps') || t.includes('jamb')) return 'JAMB'
+  if (t.includes('jamb') || t.includes('utme') || t.includes('caps')) return 'JAMB'
   if (t.includes('waec') || t.includes('wassce') || t.includes('may/june')) return 'WAEC'
   if (t.includes('neco') || t.includes('ssce')) return 'NECO'
   if (t.includes('bece') || t.includes('junior waec') || t.includes('jss')) return 'BECE'
@@ -305,17 +221,4 @@ function detectCategory(title: string): string {
   if (t.includes('admission') || t.includes('university') || t.includes('polytechnic') || t.includes('college')) return 'Admission'
   if (t.includes('scholarship') || t.includes('grant') || t.includes('bursary')) return 'Scholarship'
   return 'general'
-}
-
-function isEducationNews(title: string): boolean {
-  const t = title.toLowerCase()
-  const keywords = [
-    'jamb', 'waec', 'neco', 'bece', 'utme', 'admission',
-    'exam', 'result', 'registration', 'student', 'university',
-    'scholarship', 'school', 'education', 'academic', 'post-utme',
-    'polytechnic', 'college', 'lecture', 'campus', 'matriculation',
-    'graduation', 'nysc', 'corper', 'asuu', 'strike', 'tuition',
-    'course', 'faculty', 'department', 'gpa', 'cgpa', 'transcript',
-  ]
-  return keywords.some(k => t.includes(k))
 }

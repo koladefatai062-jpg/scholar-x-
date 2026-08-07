@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
   Home, Target, Brain, BookOpen, Users,
@@ -10,6 +10,7 @@ import {
 import Logo from '@/components/Logo'
 import Avatar from '@/components/Avatar'
 import PushNotifications from '@/components/PushNotifications'
+import { isPushSupported, getCurrentPushSubscription, enablePush } from '@/lib/webpush-client'
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard' },
@@ -26,7 +27,7 @@ const BOTTOM_NAV = NAV_ITEMS.slice(0, 5)
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40',
   border: '#1E1450', accent: '#7C3AED', cyan: '#06B6D4',
-  text: '#E2D9F3', muted: '#7B6FA0', white: '#FFFFFF',
+  text: '#E2D9F3', muted: '#7B6FA0', white: '#FFFFFF', green: '#22C55E',
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -35,6 +36,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [user, setUser] = useState<{ full_name?: string; email?: string; is_premium?: boolean; role?: string; avatar_url?: string | null } | null>(null)
+  const [pushStatus, setPushStatus] = useState<'loading' | 'granted' | 'denied' | 'default' | 'unsupported'>('loading')
+  const [toast, setToast] = useState<string | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const check = async () => {
+      if (!('Notification' in window) || !isPushSupported()) { setPushStatus('unsupported'); return }
+      if (Notification.permission === 'granted') {
+        const sub = await getCurrentPushSubscription()
+        setPushStatus(sub ? 'granted' : 'default')
+      } else {
+        setPushStatus(Notification.permission)
+      }
+    }
+    check()
+  }, [])
+
+  const showToast = (msg: string) => {
+    setToast(msg)
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(null), 3200)
+  }
+
+  const handleBellClick = async () => {
+    if (!('Notification' in window) || !isPushSupported()) {
+      showToast('Notifications are not supported in this browser')
+      return
+    }
+    if (Notification.permission === 'denied') {
+      showToast('Notifications are blocked in your browser settings')
+      return
+    }
+    const { permission, subscribed } = await enablePush()
+    setPushStatus(permission)
+    if (subscribed) {
+      setPushStatus('granted')
+      showToast('Notifications enabled')
+    } else if (permission === 'granted') {
+      showToast('Could not subscribe this device')
+    } else {
+      showToast('Notification permission not granted')
+    }
+  }
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -264,9 +308,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', padding: 4, position: 'relative' }}>
+            <button
+              onClick={handleBellClick}
+              title="Notification access"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                position: 'relative', color: pushStatus === 'granted' ? C.green : C.muted,
+                opacity: pushStatus === 'loading' ? 0.6 : 1,
+              }}
+              onMouseEnter={e => { if (pushStatus !== 'granted') e.currentTarget.style.color = C.text }}
+              onMouseLeave={e => { if (pushStatus !== 'granted') e.currentTarget.style.color = C.muted }}
+            >
               <Bell size={19} />
-              <div style={{ position: 'absolute', top: 2, right: 2, width: 7, height: 7, borderRadius: '50%', background: C.accent }} />
+              {pushStatus !== 'loading' && pushStatus !== 'unsupported' && (
+                <div style={{
+                  position: 'absolute', top: 2, right: 2, width: 7, height: 7, borderRadius: '50%',
+                  background: pushStatus === 'granted' ? C.green : pushStatus === 'denied' ? '#EF4444' : C.accent,
+                }} />
+              )}
             </button>
             <div onClick={() => router.push('/settings')} style={{ cursor: 'pointer', display: 'flex' }}>
               <Avatar name={user?.full_name} avatarUrl={user?.avatar_url} size={34} fontSize={13} />
@@ -307,6 +366,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )
           })}
         </nav>
+      )}
+
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: isMobile ? 92 : 24, left: '50%', transform: 'translateX(-50%)',
+          background: C.surface, border: `1px solid ${C.border}`, color: C.text,
+          padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+          zIndex: 400, boxShadow: '0 8px 30px rgba(0,0,0,0.45)',
+        }}>
+          {toast}
+        </div>
       )}
 
       <style>{`

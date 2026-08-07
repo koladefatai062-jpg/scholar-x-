@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { User, Lock, Bell, CreditCard, Info, LogOut, ChevronRight, Check, X, Zap, ShieldCheck, Camera } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import Avatar from '@/components/Avatar'
+import { isPushSupported, getCurrentPushSubscription, enablePush, disablePush } from '@/lib/webpush-client'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40',
@@ -53,7 +54,36 @@ export default function SettingsPage() {
 
   // Notifications
   const [emailNotifs, setEmailNotifs] = useState(true)
-  const [pushNotifs, setPushNotifs] = useState(true)
+  const [pushNotifs, setPushNotifs] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+
+  useEffect(() => {
+    const checkPush = async () => {
+      if (!('Notification' in window) || !isPushSupported()) { setPushNotifs(false); return }
+      if (Notification.permission === 'granted') {
+        const sub = await getCurrentPushSubscription()
+        setPushNotifs(Boolean(sub))
+      } else {
+        setPushNotifs(false)
+      }
+    }
+    checkPush()
+  }, [])
+
+  const togglePush = async () => {
+    setPushBusy(true)
+    try {
+      if (pushNotifs) {
+        await disablePush()
+        setPushNotifs(false)
+      } else {
+        const { subscribed } = await enablePush()
+        setPushNotifs(subscribed)
+      }
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   // Delete account
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -342,15 +372,28 @@ export default function SettingsPage() {
           <Bell size={15} color={C.accent} />
           <span style={{ fontSize: 13, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: 1 }}>Notifications</span>
         </div>
-        {[['Push notifications', pushNotifs, setPushNotifs], ['Email updates', emailNotifs, setEmailNotifs]].map(([label, val, set]: any) => (
-          <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <span style={{ fontSize: 14, color: C.text }}>{label as string}</span>
-            <button onClick={() => set((v: boolean) => !v)}
-              style={{ width: 44, height: 24, borderRadius: 12, background: val ? `linear-gradient(135deg,${C.accent},#5B21B6)` : C.border, border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
-              <div style={{ position: 'absolute', top: 3, left: val ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
-            </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div>
+            <div style={{ fontSize: 14, color: C.text }}>Push notifications</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+              {pushNotifs ? "On — get notified when group members message you" : "Off — group message alerts"}
+            </div>
           </div>
-        ))}
+          <button onClick={togglePush} disabled={pushBusy}
+            style={{ width: 44, height: 24, borderRadius: 12, background: pushNotifs ? `linear-gradient(135deg,${C.accent},#5B21B6)` : C.border, border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', opacity: pushBusy ? 0.6 : 1 }}>
+            <div style={{ position: 'absolute', top: 3, left: pushNotifs ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+          </button>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: 14, color: C.text }}>Email updates</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>News and study tips</div>
+          </div>
+          <button onClick={() => setEmailNotifs(v => !v)}
+            style={{ width: 44, height: 24, borderRadius: 12, background: emailNotifs ? `linear-gradient(135deg,${C.accent},#5B21B6)` : C.border, border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
+            <div style={{ position: 'absolute', top: 3, left: emailNotifs ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+          </button>
+        </div>
       </div>
 
       {/* Security */}

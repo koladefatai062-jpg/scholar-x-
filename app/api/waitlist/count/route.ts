@@ -15,19 +15,24 @@ async function rpcSafe(p: PromiseLike<any>): Promise<RpcResult> {
 
 // GET — public waitlist count + recent joiners for the landing page
 export async function GET() {
-  const supabase = createAdminClient()
+  try {
+    const supabase = createAdminClient()
 
-  const [countRes, recentRes] = await Promise.all([
-    rpcSafe(supabase.rpc('get_waitlist_count')),
-    rpcSafe(supabase.rpc('get_waitlist_recent', { limit_n: 5 })),
-  ])
+    const [countRes, recentRes] = await Promise.all([
+      rpcSafe(supabase.rpc('get_waitlist_count')),
+      rpcSafe(supabase.rpc('get_waitlist_recent', { limit_n: 5 })),
+    ])
 
-  return NextResponse.json({
-    count: typeof countRes.data === 'number' ? countRes.data : 0,
-    recent: ((recentRes.data as { first_name: string; initials: string; color_index: number }[]) || []).map(r => ({
-      first_name: r.first_name || '',
-      initials: r.initials || '',
-      color_index: r.color_index ?? 0,
-    })),
-  })
+    return NextResponse.json({
+      count: typeof countRes.data === 'number' ? countRes.data : 0,
+      recent: ((recentRes.data as { first_name: string; initials: string; color_index: number }[]) || []).map(r => ({
+        first_name: r.first_name || '',
+        initials: r.initials || '',
+        color_index: r.color_index ?? 0,
+      })),
+    })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Server error'
+    return NextResponse.json({ error: msg, count: 0, recent: [] }, { status: 500 })
+  }
 }

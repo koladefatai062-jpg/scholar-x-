@@ -126,7 +126,12 @@ export default function LandingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ full_name: wlName, email: wlEmail, level: wlLevel }),
       })
-      const data = await res.json()
+      let data: { error?: string; status?: string } = {}
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error('The server returned an error. Please try again shortly.')
+      }
       if (!res.ok) throw new Error(data.error || 'Something went wrong')
       setWlState(data.status === 'exists' ? 'exists' : 'added')
       setWlName(''); setWlEmail(''); setWlLevel('')

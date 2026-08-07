@@ -155,7 +155,9 @@ export default function LandingPage() {
             <Logo size={32} text="ScholarX" />
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <button onClick={() => router.push('/login')} style={{ background: 'none', border: `1px solid ${C.border}`, color: C.text, padding: '7px 16px', borderRadius: 8, fontSize: 14, cursor: 'pointer' }}>Log in</button>
+            {timeLeft.done && (
+              <button onClick={() => router.push('/login')} style={{ background: 'none', border: `1px solid ${C.border}`, color: C.text, padding: '7px 16px', borderRadius: 8, fontSize: 14, cursor: 'pointer' }}>Log in</button>
+            )}
             <button onClick={scrollToWaitlist} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 700 }}>
               Join the waitlist
             </button>

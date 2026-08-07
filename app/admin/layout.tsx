@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { BarChart2, HelpCircle, BookOpen, Newspaper, Briefcase, Users, LayoutDashboard, LogOut, Menu, X } from 'lucide-react'
+import { BarChart2, HelpCircle, BookOpen, Newspaper, Briefcase, Users, LayoutDashboard, LogOut, Menu, X, Mail } from 'lucide-react'
 import Logo from '@/components/Logo'
 
 const C = {
@@ -20,6 +20,7 @@ const NAV = [
   { id: 'opportunities', label: 'Opportunities', icon: Briefcase, path: '/admin/opportunities' },
   { id: 'groups', label: 'Groups', icon: Users, path: '/admin/groups' },
   { id: 'users', label: 'Users', icon: Users, path: '/admin/users' },
+  { id: 'waitlist', label: 'Waitlist', icon: Mail, path: '/admin/waitlist' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

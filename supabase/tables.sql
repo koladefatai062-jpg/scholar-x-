@@ -613,3 +613,25 @@ CREATE POLICY "waitlist_insert_public" ON waitlist
 
 -- No SELECT/UPDATE/DELETE policies: the list is private,
 -- viewable only via the Supabase dashboard or service role.
+
+-- Public helpers for the landing page (count + recent joiners)
+CREATE OR REPLACE FUNCTION public.get_waitlist_count()
+RETURNS bigint LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT COUNT(*)::bigint FROM public.waitlist;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_waitlist_recent(limit_n integer DEFAULT 5)
+RETURNS TABLE(first_name text, initials text, color_index integer)
+LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT
+    split_part(COALESCE(full_name, ''), ' ', 1) AS first_name,
+    upper(left(COALESCE(full_name, ''), 2)) AS initials,
+    (abs(hashtext(COALESCE(full_name, ''))::bigint) % 6)::integer AS color_index
+  FROM public.waitlist
+  WHERE full_name IS NOT NULL AND full_name <> ''
+  ORDER BY created_at DESC
+  LIMIT limit_n;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_waitlist_count() TO anon;
+GRANT EXECUTE ON FUNCTION public.get_waitlist_recent(integer) TO anon;

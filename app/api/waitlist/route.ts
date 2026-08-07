@@ -2,8 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
 import { Resend } from 'resend'
 
+// Simple in-memory rate limit: 5 signups per IP per hour
+const ipHits = new Map<string, number[]>()
+const MAX_PER_HOUR = 5
+
+function rateLimited(ip: string) {
+  const now = Date.now()
+  const hits = (ipHits.get(ip) || []).filter(t => now - t < 3600_000)
+  if (hits.length >= MAX_PER_HOUR) return true
+  hits.push(now)
+  ipHits.set(ip, hits)
+  return false
+}
+
 // POST — add a public waitlist signup and email the owner when a new user joins
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  if (rateLimited(ip)) {
+    return NextResponse.json({ error: 'Too many signups from this device. Try again later.' }, { status: 429 })
+  }
+
   const { full_name, email, level } = await request.json().catch(() => ({}))
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return NextResponse.json({ error: 'A valid email is required' }, { status: 400 })

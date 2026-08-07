@@ -20,10 +20,22 @@ export async function notifyGroupMessage(opts: {
 
   const supabase = createAdminClient()
 
+  // Only notify members of this group (service role bypasses RLS)
+  const { data: members } = await supabase
+    .from('group_members')
+    .select('user_id')
+    .eq('group_id', groupId)
+
+  const memberIds = (members || [])
+    .map(m => m.user_id)
+    .filter((id: string) => id !== senderId)
+
+  if (memberIds.length === 0) return
+
   const { data: tokens } = await supabase
     .from('push_tokens')
     .select('token')
-    .neq('user_id', senderId)
+    .in('user_id', memberIds)
 
   if (!tokens?.length) return
 

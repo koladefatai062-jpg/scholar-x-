@@ -76,6 +76,11 @@ CREATE TABLE IF NOT EXISTS library_items (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+ALTER TABLE library_items ADD COLUMN IF NOT EXISTS author TEXT;
+ALTER TABLE library_items ADD COLUMN IF NOT EXISTS level TEXT DEFAULT 'secondary';
+ALTER TABLE library_items ADD COLUMN IF NOT EXISTS file_url TEXT;
+ALTER TABLE library_items ADD COLUMN IF NOT EXISTS cover_url TEXT;
+
 CREATE TABLE IF NOT EXISTS saved_items (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -98,6 +103,10 @@ CREATE TABLE IF NOT EXISTS news (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+ALTER TABLE news ADD COLUMN IF NOT EXISTS source_url TEXT;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS source_name TEXT;
+ALTER TABLE news ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general';
+
 CREATE TABLE IF NOT EXISTS opportunities (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
@@ -109,6 +118,11 @@ CREATE TABLE IF NOT EXISTS opportunities (
   is_premium BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS org TEXT;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS amount TEXT;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS apply_url TEXT;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
 
 -- ------------------------------------------------------------
 -- Community: posts + likes
@@ -144,6 +158,8 @@ CREATE TABLE IF NOT EXISTS groups (
   member_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE groups ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
 
 CREATE TABLE IF NOT EXISTS group_members (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -209,6 +225,8 @@ CREATE TABLE IF NOT EXISTS payments (
   status TEXT DEFAULT 'pending',
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 
 -- ------------------------------------------------------------
 -- Grades tracker
@@ -524,10 +542,6 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 DO $$ BEGIN
-  ALTER PUBLICATION supabase_realtime ADD TABLE comments;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-DO $$ BEGIN
   ALTER PUBLICATION supabase_realtime ADD TABLE groups;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
@@ -546,7 +560,6 @@ END $$;
 
 ALTER TABLE posts REPLICA IDENTITY FULL;
 ALTER TABLE post_likes REPLICA IDENTITY FULL;
-ALTER TABLE comments REPLICA IDENTITY FULL;
 ALTER TABLE groups REPLICA IDENTITY FULL;
 ALTER TABLE group_members REPLICA IDENTITY FULL;
 ALTER TABLE group_messages REPLICA IDENTITY FULL;

@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
         { onConflict: 'email', ignoreDuplicates: true }
       )
       .select('id')
-      .single()
+      .maybeSingle()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

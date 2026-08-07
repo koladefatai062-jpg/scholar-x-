@@ -31,6 +31,15 @@ export default function QuizPage() {
 
   const startQuiz = async () => {
     setLoading(true)
+
+    // Premium questions are only served to premium members.
+    let isPremium = false
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase.from('users').select('is_premium').eq('id', user.id).maybeSingle()
+      isPremium = profile?.is_premium || false
+    }
+
     const { data, error } = await supabase
       .from('questions')
       .select('id, exam, subject, question_text, option_a, option_b, option_c, option_d, is_premium')
@@ -39,13 +48,15 @@ export default function QuizPage() {
       .order('id')
       .limit(count * 3)
 
-    if (error || !data || data.length === 0) {
+    const available = (data || []).filter(q => isPremium || !q.is_premium)
+
+    if (error || available.length === 0) {
       alert('No questions found for this selection yet. Try another subject.')
       setLoading(false)
       return
     }
 
-    const shuffled = [...data].sort(() => Math.random() - 0.5).slice(0, count)
+    const shuffled = [...available].sort(() => Math.random() - 0.5).slice(0, count)
 
     const activeQuestions = shuffled.map(q => ({
       id: q.id,

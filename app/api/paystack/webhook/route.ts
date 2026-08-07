@@ -39,23 +39,31 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date()
     expiresAt.setFullYear(expiresAt.getFullYear() + 1)
 
-    // Update user to premium
-    if (userId) {
-      await supabase.from('users').update({
-        is_premium: true,
-        premium_expires_at: expiresAt.toISOString(),
-      }).eq('id', userId)
-    } else {
-      // Fallback: find user by email
-      await supabase.from('users').update({
-        is_premium: true,
-        premium_expires_at: expiresAt.toISOString(),
-      }).eq('email', email)
+    // Resolve the user: prefer metadata.user_id, fall back to an email lookup.
+    let targetUserId: string | null = userId || null
+    if (!targetUserId && email) {
+      const { data: matched } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle()
+      targetUserId = matched?.id || null
     }
+
+    if (!targetUserId) {
+      console.error('Paystack webhook: no matching user for', email)
+      return NextResponse.json({ received: true })
+    }
+
+    // Update user to premium
+    await supabase.from('users').update({
+      is_premium: true,
+      premium_expires_at: expiresAt.toISOString(),
+    }).eq('id', targetUserId)
 
     // Save payment record
     await supabase.from('payments').insert({
-      user_id: userId,
+      user_id: targetUserId,
       reference,
       amount,
       status: 'success',

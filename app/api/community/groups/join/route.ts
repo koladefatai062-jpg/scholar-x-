@@ -45,7 +45,12 @@ export async function POST(request: NextRequest) {
   }
 
   // Join group
-  const { data: groupInfo } = await supabase.from('groups').select('created_by').eq('id', group_id).single()
+  const { data: groupInfo } = await supabase.from('groups').select('created_by, status').eq('id', group_id).single()
+
+  if (!groupInfo || groupInfo.status !== 'active') {
+    return NextResponse.json({ error: 'This group is not open yet.' }, { status: 400 })
+  }
+
   const role = groupInfo?.created_by === user.id ? 'admin' : 'member'
   await supabase.from('group_members').insert({ user_id: user.id, group_id, role })
   await supabase.rpc('increment_group_members', { p_group_id: group_id })

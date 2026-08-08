@@ -53,6 +53,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       })
   }, [router])
 
+  const INACTIVITY_MS = 7 * 24 * 60 * 60 * 1000
+  const LAST_ACTIVE_KEY = 'scholarx_last_active'
+
+  useEffect(() => {
+    const now = Date.now()
+    const stored = localStorage.getItem(LAST_ACTIVE_KEY)
+    if (stored) {
+      const last = Number(stored)
+      if (Number.isFinite(last) && now - last > INACTIVITY_MS) {
+        localStorage.removeItem(LAST_ACTIVE_KEY)
+        fetch('/api/auth/logout', { method: 'POST' })
+          .catch(() => {})
+          .finally(() => router.push('/login'))
+        return
+      }
+    }
+    localStorage.setItem(LAST_ACTIVE_KEY, String(now))
+  }, [router])
+
+  useEffect(() => {
+    const touch = () => localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()))
+    const onVisible = () => { if (document.visibilityState === 'visible') touch() }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', touch)
+    window.addEventListener('pointerdown', touch)
+    const id = setInterval(touch, 60_000)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', touch)
+      window.removeEventListener('pointerdown', touch)
+      clearInterval(id)
+    }
+  }, [])
+
   if (!authorized) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: C.bg, color: C.muted, fontSize: 14 }}>

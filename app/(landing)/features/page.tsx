@@ -1,11 +1,10 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, ArrowRight, Target, Brain, BookOpen, Users, MessageCircle,
   TrendingUp, Briefcase, Check, Shield, CheckCheck, FileText, Image,
-  Bell, Clock, Crown, Zap, GraduationCap, ClipboardList, Mail, Loader2
+  Bell, Clock, Crown, Zap, GraduationCap, ClipboardList
 } from 'lucide-react'
 import Logo from '@/components/Logo'
 
@@ -132,35 +131,8 @@ const premiumFeatures = [
 export default function FeaturesPage() {
   const router = useRouter()
 
-  const [wlName, setWlName] = useState('')
-  const [wlEmail, setWlEmail] = useState('')
-  const [wlLevel, setWlLevel] = useState('')
-  const [wlState, setWlState] = useState<'idle' | 'sending' | 'added' | 'exists' | 'error'>('idle')
-  const [wlError, setWlError] = useState('')
-
-  async function submitWaitlist(e: React.FormEvent) {
-    e.preventDefault()
-    setWlState('sending')
-    setWlError('')
-    try {
-      const res = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: wlName, email: wlEmail, level: wlLevel }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Something went wrong')
-      setWlState(data.status === 'exists' ? 'exists' : 'added')
-    } catch (err) {
-      setWlState('error')
-      setWlError(err instanceof Error ? err.message : 'Something went wrong')
-    }
-  }
-
   return (
     <div style={{ background: C.bg, minHeight: '100vh', fontFamily: "'Inter',-apple-system,sans-serif", color: C.text }}>
-      <style>{`@keyframes wlspin { to { transform: rotate(360deg) } } .wlspin { animation: wlspin .8s linear infinite }`}</style>
-
       {/* NAVBAR */}
       <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'rgba(10,6,40,0.94)', backdropFilter: 'blur(14px)', borderBottom: `1px solid ${C.border}`, padding: '0 24px' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 }}>
@@ -190,67 +162,6 @@ export default function FeaturesPage() {
         <p style={{ fontSize: 16, color: C.muted, maxWidth: 560, margin: '0 auto', lineHeight: 1.7 }}>
           Past questions, AI explanations, live study groups, grade tracking and more — everything for Nigerian secondary and university students in one app.
         </p>
-      </section>
-
-      {/* WAITLIST */}
-      <section style={{ padding: '0 24px 80px', maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ background: `linear-gradient(160deg,${C.accent}20,${C.card})`, border: `1px solid ${C.accent}44`, borderRadius: 20, padding: '44px 32px', textAlign: 'center' }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: `${C.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
-            <Mail size={24} color={C.accent} />
-          </div>
-          <h2 style={{ fontSize: 'clamp(22px,3.5vw,34px)', fontWeight: 800, color: C.white, letterSpacing: '-1px', marginBottom: 8 }}>
-            Be first when we launch
-          </h2>
-          <p style={{ color: C.muted, fontSize: 15, maxWidth: 480, margin: '0 auto 28px', lineHeight: 1.6 }}>
-            Join the waitlist and we'll email you the moment ScholarX goes live in your state.
-          </p>
-
-          {wlState === 'added' || wlState === 'exists' ? (
-            <div style={{ background: `${C.green}14`, border: `1px solid ${C.green}3A`, borderRadius: 12, padding: 18, maxWidth: 440, margin: '0 auto' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: C.green, fontSize: 15, fontWeight: 700 }}>
-                <Check size={18} /> {wlState === 'added' ? "You're on the list!" : "You're already on the list"}
-              </div>
-              <p style={{ color: C.muted, fontSize: 13, marginTop: 6 }}>We'll email you when we launch.</p>
-            </div>
-          ) : (
-            <form onSubmit={submitWaitlist} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 440, margin: '0 auto' }}>
-              <input
-                type="text"
-                placeholder="Full name (optional)"
-                value={wlName}
-                onChange={e => setWlName(e.target.value)}
-                style={{ padding: '13px 16px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.bg, color: C.white, fontSize: 14, outline: 'none' }}
-              />
-              <input
-                type="email"
-                required
-                placeholder="Email address"
-                value={wlEmail}
-                onChange={e => setWlEmail(e.target.value)}
-                style={{ padding: '13px 16px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.bg, color: C.white, fontSize: 14, outline: 'none' }}
-              />
-              <select
-                value={wlLevel}
-                onChange={e => setWlLevel(e.target.value)}
-                style={{ padding: '13px 16px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.bg, color: wlLevel ? C.white : C.muted, fontSize: 14, outline: 'none' }}
-              >
-                <option value="" disabled>What's your level?</option>
-                <option value="ss1">SS1</option>
-                <option value="ss2">SS2</option>
-                <option value="ss3">SS3 / JAMB candidate</option>
-                <option value="100l">University 100–200L</option>
-                <option value="300l">University 300L+</option>
-                <option value="other">Other</option>
-              </select>
-              {wlState === 'error' && (
-                <p style={{ color: '#F87171', fontSize: 13, margin: 0 }}>{wlError}</p>
-              )}
-              <button type="submit" disabled={wlState === 'sending'} style={{ padding: '13px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${C.accent},#5B21B6)`, color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: wlState === 'sending' ? 0.6 : 1 }}>
-                {wlState === 'sending' ? (<><Loader2 size={16} className="wlspin" /> Joining…</>) : (<><Mail size={16} /> Join the waitlist</>)}
-              </button>
-            </form>
-          )}
-        </div>
       </section>
 
       {/* CATEGORY GRID */}

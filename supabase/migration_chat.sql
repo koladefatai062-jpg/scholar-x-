@@ -108,6 +108,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
 $$;
 
 DROP POLICY IF EXISTS "members_select_own" ON group_members;
+DROP POLICY IF EXISTS "members_select_group" ON group_members;
 CREATE POLICY "members_select_group" ON group_members
   FOR SELECT USING (public.is_group_member(group_members.group_id));
 

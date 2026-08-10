@@ -23,8 +23,18 @@ export async function PATCH(request: NextRequest) {
   if (!user || !await isAdmin(user.id)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const admin = createAdminClient()
-  const { id, status, rejection_reason } = await request.json()
-  const { data, error } = await admin.from('groups').update({ status, rejection_reason }).eq('id', id).select().single()
+  const body = await request.json()
+  const { id } = body
+  const update: Record<string, unknown> = {}
+  if (body.status !== undefined) update.status = body.status
+  if (body.rejection_reason !== undefined) update.rejection_reason = body.rejection_reason
+  if (body.name !== undefined) update.name = body.name
+  if (body.subject !== undefined) update.subject = body.subject
+  if (body.description !== undefined) update.description = body.description
+  if (body.avatar_url !== undefined) update.avatar_url = body.avatar_url
+  if (Object.keys(update).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
+
+  const { data, error } = await admin.from('groups').update(update).eq('id', id).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ group: data })
 }

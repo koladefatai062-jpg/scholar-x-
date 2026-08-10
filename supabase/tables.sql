@@ -274,7 +274,7 @@ CREATE TABLE IF NOT EXISTS grades (
   grade TEXT NOT NULL,
   credit_units INTEGER NOT NULL DEFAULT 3,
   semester TEXT NOT NULL DEFAULT 'first',
-  session TEXT NOT NULL DEFAULT '2024/2025',
+  session TEXT NOT NULL DEFAULT '2025/2026',
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

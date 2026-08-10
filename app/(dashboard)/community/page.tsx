@@ -286,7 +286,7 @@ export default function CommunityPage() {
                   <h3 style={{ fontSize: 18, fontWeight: 700, color: C.white }}>Create study group</h3>
                   <button onClick={() => setShowCreateGroup(false)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer' }}><X size={20} /></button>
                 </div>
-                {[['Group name', 'name', 'e.g. JAMB 2025 Squad'], ['Subject', 'subject', 'e.g. Mathematics'], ['Description', 'description', 'What is this group about?']].map(([label, key, ph]) => (
+                {[['Group name', 'name', 'e.g. JAMB 2026 Squad'], ['Subject', 'subject', 'e.g. Mathematics'], ['Description', 'description', 'What is this group about?']].map(([label, key, ph]) => (
                   <div key={key} style={{ marginBottom: 14 }}>
                     <label style={{ fontSize: 12, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 5 }}>{label}</label>
                     <input value={groupForm[key as keyof typeof groupForm]} onChange={e => setGroupForm(prev => ({ ...prev, [key]: e.target.value }))}

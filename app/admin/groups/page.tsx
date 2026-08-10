@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, X, Trash2 } from 'lucide-react'
+import { Check, X, Trash2, Pencil } from 'lucide-react'
 
 const C = { bg:'#0A0628',surface:'#110836',card:'#150D40',border:'#1E1450',accent:'#7C3AED',cyan:'#06B6D4',text:'#E2D9F3',muted:'#7B6FA0',white:'#FFFFFF',gold:'#F59E0B',green:'#22C55E',red:'#EF4444' }
 
@@ -11,6 +11,8 @@ export default function AdminGroupsPage() {
   const [filter, setFilter] = useState('pending')
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [editGroup, setEditGroup] = useState<any | null>(null)
+  const [editForm, setEditForm] = useState({ name: '', subject: '', description: '' })
 
   useEffect(() => { fetchGroups() }, [])
 
@@ -52,6 +54,23 @@ export default function AdminGroupsPage() {
       body: JSON.stringify({ id }),
     })
     setGroups(p => p.filter(g => g.id !== id))
+  }
+
+  const openEdit = (group: any) => {
+    setEditGroup(group)
+    setEditForm({ name: group.name || '', subject: group.subject || '', description: group.description || '' })
+  }
+
+  const saveEdit = async () => {
+    if (!editGroup) return
+    const res = await fetch('/api/admin/groups', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editGroup.id, name: editForm.name.trim(), subject: editForm.subject.trim(), description: editForm.description.trim() }),
+    })
+    const data = await res.json()
+    if (data.group) setGroups(p => p.map(g => g.id === editGroup.id ? data.group : g))
+    setEditGroup(null)
   }
 
   const statusColor: Record<string,string> = { pending: C.gold, active: C.green, rejected: C.red }
@@ -111,6 +130,12 @@ export default function AdminGroupsPage() {
                       </button>
                     </>
                   )}
+                  <button onClick={() => openEdit(group)}
+                    style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', padding: 6 }}
+                    onMouseEnter={e => e.currentTarget.style.color = C.cyan}
+                    onMouseLeave={e => e.currentTarget.style.color = C.muted}>
+                    <Pencil size={15} />
+                  </button>
                   <button onClick={() => deleteGroup(group.id)}
                     style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', padding: 6 }}
                     onMouseEnter={e => e.currentTarget.style.color = C.red}
@@ -141,6 +166,34 @@ export default function AdminGroupsPage() {
               <button onClick={() => reject(rejectId)}
                 style={{ flex: 1, background: C.red, border: 'none', color: '#fff', padding: '11px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                 Reject group
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit modal */}
+      {editGroup && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 28, width: '100%', maxWidth: 440 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: C.white, marginBottom: 16 }}>Edit group</h3>
+            {[['Name', 'name', 'Group name'], ['Subject', 'subject', 'e.g. Mathematics'], ['Description', 'description', 'What is this group about?']].map(([label, key, ph]) => (
+              <label key={key} style={{ fontSize: 12, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 14 }}>
+                {label}
+                {key === 'description'
+                  ? <textarea value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                      placeholder={ph as string} rows={3} style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.text, fontSize: 14, outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginTop: 6 }} />
+                  : <input value={editForm[key as 'name' | 'subject']} onChange={e => setEditForm({ ...editForm, [key]: e.target.value })}
+                      placeholder={ph as string} style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box', marginTop: 6 }} />}
+              </label>
+            ))}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setEditGroup(null)}
+                style={{ flex: 1, background: 'transparent', border: `1px solid ${C.border}`, color: C.text, padding: '11px', borderRadius: 9, fontSize: 14, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={saveEdit}
+                style={{ flex: 1, background: C.accent, border: 'none', color: '#fff', padding: '11px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                Save changes
               </button>
             </div>
           </div>

@@ -42,10 +42,10 @@ export default function GradesPage() {
   const [scale, setScale] = useState<4 | 5>(5)
 
   // University form
-  const [uniForm, setUniForm] = useState({ code: '', name: '', units: '', score: '', semester: 'first', session: '2024/2025' })
+  const [uniForm, setUniForm] = useState({ code: '', name: '', units: '', score: '', semester: 'first', session: '2025/2026' })
 
   // Secondary form
-  const [secForm, setSecForm] = useState({ subject: '', ca_score: '', exam_score: '', term: 'first', session: '2024/2025' })
+  const [secForm, setSecForm] = useState({ subject: '', ca_score: '', exam_score: '', term: 'first', session: '2025/2026' })
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -80,7 +80,7 @@ export default function GradesPage() {
       const data = await res.json()
       if (data.course) {
         setCourses(prev => [data.course, ...prev])
-        setUniForm({ code: '', name: '', units: '', score: '', semester: 'first', session: '2024/2025' })
+        setUniForm({ code: '', name: '', units: '', score: '', semester: 'first', session: '2025/2026' })
         setShowForm(false)
       }
     } catch {}
@@ -99,7 +99,7 @@ export default function GradesPage() {
       const data = await res.json()
       if (data.result) {
         setResults(prev => [data.result, ...prev])
-        setSecForm({ subject: '', ca_score: '', exam_score: '', term: 'first', session: '2024/2025' })
+        setSecForm({ subject: '', ca_score: '', exam_score: '', term: 'first', session: '2025/2026' })
         setShowForm(false)
       }
     } catch {}
@@ -303,7 +303,7 @@ export default function GradesPage() {
                   <div>
                     <label style={{ fontSize: 12, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 5 }}>Session</label>
                     <input value={uniForm.session} onChange={e => setUniForm(prev => ({ ...prev, session: e.target.value }))}
-                      placeholder="2024/2025" style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                      placeholder="2025/2026" style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                 </div>
                 <button onClick={addCourse} disabled={submitting} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 4 }}>
@@ -333,7 +333,7 @@ export default function GradesPage() {
                   <div>
                     <label style={{ fontSize: 12, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 5 }}>Session</label>
                     <input value={secForm.session} onChange={e => setSecForm(prev => ({ ...prev, session: e.target.value }))}
-                      placeholder="2024/2025" style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                      placeholder="2025/2026" style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                 </div>
                 <button onClick={addResult} disabled={submitting} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 4 }}>

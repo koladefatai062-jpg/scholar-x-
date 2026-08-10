@@ -242,7 +242,7 @@ export default function LandingPage() {
             </a>
           ))}
         </div>
-        <p style={{ color: C.muted, fontSize: 13 }}>© 2025 ScholarX. Built for Nigerian students.</p>
+        <p style={{ color: C.muted, fontSize: 13 }}>© 2026 ScholarX. Built for Nigerian students.</p>
       </footer>
     </div>
   )

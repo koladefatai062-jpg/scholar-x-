@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { xpForScore } from '@/lib/gamification'
 
 export async function POST(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
@@ -53,5 +54,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ attempt })
+  // Award XP / streaks / badges
+  const xp = xpForScore(score)
+  const { data: gamification } = await supabase.rpc('award_quiz_xp', {
+    p_xp: xp,
+    p_perfect: score >= total,
+  })
+
+  return NextResponse.json({ attempt, gamification })
 }

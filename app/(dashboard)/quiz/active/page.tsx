@@ -130,11 +130,15 @@ export default function ActiveQuizPage() {
     sessionStorage.setItem('quiz_review', JSON.stringify(reviewRef.current))
 
     try {
-      await fetch('/api/quiz/submit', {
+      const res = await fetch('/api/quiz/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...result, answers: answersRef.current }),
       })
+      const data = await res.json()
+      if (data.gamification) {
+        sessionStorage.setItem('quiz_gamification', JSON.stringify(data.gamification))
+      }
     } catch (err) {
       console.error('Failed to save quiz attempt:', err)
     }

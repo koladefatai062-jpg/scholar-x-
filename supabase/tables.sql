@@ -16,10 +16,17 @@ CREATE TABLE IF NOT EXISTS users (
   is_premium BOOLEAN DEFAULT false,
   premium_expires_at TIMESTAMPTZ,
   avatar_url TEXT,
+  streak INTEGER DEFAULT 0,
+  xp INTEGER DEFAULT 0,
+  badges TEXT[] DEFAULT '{}',
+  last_active_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS badges TEXT[] DEFAULT '{}';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ;
 
 -- ------------------------------------------------------------
 -- Quiz questions

@@ -17,6 +17,8 @@ export interface User {
   is_premium: boolean
   premium_expires_at: string | null
   streak: number
+  xp: number
+  badges: string[]
   last_active: string
   created_at: string
 }

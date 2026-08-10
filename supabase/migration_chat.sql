@@ -177,3 +177,69 @@ ALTER TABLE groups REPLICA IDENTITY FULL;
 ALTER TABLE group_members REPLICA IDENTITY FULL;
 ALTER TABLE group_messages REPLICA IDENTITY FULL;
 ALTER TABLE group_message_reads REPLICA IDENTITY FULL;
+
+-- ------------------------------------------------------------
+-- 7. Gamification: XP, badges, streak (idempotent)
+-- ------------------------------------------------------------
+ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS badges TEXT[] DEFAULT '{}';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ;
+
+DROP FUNCTION IF EXISTS award_quiz_xp(integer, boolean);
+CREATE OR REPLACE FUNCTION public.award_quiz_xp(p_xp integer, p_perfect boolean)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  p_user_id uuid := auth.uid();
+  today date := CURRENT_DATE;
+  prev_last timestamptz;
+  new_streak integer;
+  new_xp integer;
+  new_level integer;
+  new_badges text[];
+  awarded text[] := '{}';
+BEGIN
+  IF p_user_id IS NULL THEN RETURN NULL; END IF;
+
+  SELECT last_active_at INTO prev_last FROM users WHERE id = p_user_id;
+  IF prev_last IS NULL OR prev_last::date < today - 1 THEN
+    new_streak := 1;
+  ELSIF prev_last::date = today - 1 THEN
+    SELECT streak + 1 INTO new_streak FROM users WHERE id = p_user_id;
+  ELSE
+    SELECT streak INTO new_streak FROM users WHERE id = p_user_id;
+  END IF;
+
+  SELECT COALESCE(xp, 0) + p_xp INTO new_xp FROM users WHERE id = p_user_id;
+  new_level := floor(sqrt(new_xp / 50.0)) + 1;
+
+  SELECT COALESCE(badges, '{}'::text[]) INTO new_badges FROM users WHERE id = p_user_id;
+
+  IF NOT (new_badges @> ARRAY['first_quiz']) THEN
+    new_badges := array_append(new_badges, 'first_quiz'); awarded := array_append(awarded, 'first_quiz');
+  END IF;
+  IF p_perfect AND NOT (new_badges @> ARRAY['perfect_score']) THEN
+    new_badges := array_append(new_badges, 'perfect_score'); awarded := array_append(awarded, 'perfect_score');
+  END IF;
+  IF new_streak >= 7 AND NOT (new_badges @> ARRAY['week_warrior']) THEN
+    new_badges := array_append(new_badges, 'week_warrior'); awarded := array_append(awarded, 'week_warrior');
+  END IF;
+  IF new_xp >= 500 AND NOT (new_badges @> ARRAY['rising_star']) THEN
+    new_badges := array_append(new_badges, 'rising_star'); awarded := array_append(awarded, 'rising_star');
+  END IF;
+  IF new_level >= 5 AND NOT (new_badges @> ARRAY['level_five']) THEN
+    new_badges := array_append(new_badges, 'level_five'); awarded := array_append(awarded, 'level_five');
+  END IF;
+
+  UPDATE users SET xp = new_xp, streak = new_streak, badges = new_badges, last_active_at = now()
+  WHERE id = p_user_id;
+
+  RETURN jsonb_build_object(
+    'xp_gained', p_xp,
+    'xp', new_xp,
+    'level', new_level,
+    'streak', new_streak,
+    'badges', new_badges,
+    'new_badges', awarded
+  );
+END;
+$$;

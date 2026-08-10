@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import {
   Home, Target, Brain, BookOpen, Users,
   TrendingUp, Settings, LogOut, Menu, X,
-  Bell, GraduationCap, ChevronRight
+  Bell, GraduationCap, ChevronRight, Trophy
 } from 'lucide-react'
 import Logo from '@/components/Logo'
 import Avatar from '@/components/Avatar'
@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { id: 'ai-tutor', label: 'AI Tutor', icon: Brain, path: '/ai-tutor' },
   { id: 'library', label: 'Library', icon: BookOpen, path: '/library' },
   { id: 'community', label: 'Community', icon: Users, path: '/community' },
+  { id: 'leaderboard', label: 'Leaderboard', icon: Trophy, path: '/leaderboard' },
   { id: 'grades', label: 'Grades', icon: TrendingUp, path: '/grades' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
 ]

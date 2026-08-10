@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Zap, Target, TrendingUp, Bookmark, Brain, BookOpen, ArrowRight } from 'lucide-react'
+import { Zap, Target, TrendingUp, Brain, BookOpen, ArrowRight, Trophy } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import type { User, News, Opportunity } from '@/types'
+import { levelProgress, badgeInfo } from '@/lib/gamification'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40', border: '#1E1450',
@@ -53,6 +54,9 @@ export default function DashboardPage() {
     ? Math.round(attempts.reduce((a, c) => a + (c.score / c.total) * 100, 0) / attempts.length)
     : 0
 
+  const prog = levelProgress(user?.xp || 0)
+  const badges = user?.badges || []
+
   const catColor: Record<string, string> = { JAMB: C.accent, WAEC: C.cyan, NECO: C.green, BECE: C.gold, general: C.muted }
   const typeColor: Record<string, string> = { scholarship: C.accent, competition: C.cyan, internship: C.gold }
   const tagColor: Record<string, string> = { open: C.green, 'closing soon': C.gold }
@@ -86,12 +90,12 @@ export default function DashboardPage() {
       </div>
 
       {/* STATS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 12, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 12, marginBottom: 16 }}>
         {[
+          { label: 'Level', value: `Lv ${prog.level}`, icon: <Trophy size={16} color={C.accent} />, color: C.accent },
+          { label: 'Total XP', value: `${user?.xp || 0}`, icon: <Target size={16} color={C.cyan} />, color: C.cyan },
           { label: 'Quiz streak', value: `${user?.streak || 0} days`, icon: <Zap size={16} color={C.gold} />, color: C.gold },
-          { label: 'Questions done', value: attempts.length * 10, icon: <Target size={16} color={C.accent} />, color: C.accent },
-          { label: 'Avg score', value: `${avgScore}%`, icon: <TrendingUp size={16} color={C.cyan} />, color: C.cyan },
-          { label: 'Plan', value: user?.is_premium ? '⭐ Premium' : 'Free', icon: <Bookmark size={16} color={C.green} />, color: C.green },
+          { label: 'Avg score', value: `${avgScore}%`, icon: <TrendingUp size={16} color={C.green} />, color: C.green },
         ].map(({ label, value, icon, color }) => (
           <div key={label} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
@@ -101,6 +105,32 @@ export default function DashboardPage() {
             <div style={{ fontSize: 22, fontWeight: 800, color }}>{value}</div>
           </div>
         ))}
+      </div>
+
+      {/* LEVEL PROGRESS */}
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, marginBottom: 28 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <span style={{ fontSize: 12, color: C.muted, fontWeight: 600, textTransform: 'uppercase' }}>
+            {prog.next - prog.current} XP to Level {prog.level + 1}
+          </span>
+          <span style={{ fontSize: 12, color: C.muted, fontWeight: 700 }}>{prog.pct}%</span>
+        </div>
+        <div style={{ height: 8, background: C.surface, borderRadius: 6, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ height: '100%', width: `${prog.pct}%`, background: `linear-gradient(90deg,${C.accent},${C.cyan})`, borderRadius: 6 }} />
+        </div>
+        {badges.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {badges.map(b => {
+              const info = badgeInfo(b)
+              return (
+                <div key={b} style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '6px 10px' }} title={info.desc}>
+                  <span style={{ fontSize: 15 }}>{info.emoji}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>{info.label}</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* QUICK ACTIONS */}

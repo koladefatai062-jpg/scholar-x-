@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Trophy, Eye, Check, X, Sparkles } from 'lucide-react'
+import { badgeInfo } from '@/lib/gamification'
 
 interface ReviewItem {
   question_text: string
@@ -11,6 +12,15 @@ interface ReviewItem {
   correct: string
   explanation: string | null
   is_correct: boolean
+}
+
+interface Gamification {
+  xp_gained: number
+  xp: number
+  level: number
+  streak: number
+  badges: string[]
+  new_badges: string[]
 }
 
 export default function QuizResultPage() {
@@ -22,6 +32,7 @@ export default function QuizResultPage() {
   const [explainLoading, setExplainLoading] = useState(false)
   const [explainError, setExplainError] = useState<string | null>(null)
   const [isPremium, setIsPremium] = useState(false)
+  const [gamification, setGamification] = useState<Gamification | null>(null)
 
   useEffect(() => {
     const stored = sessionStorage.getItem('quiz_result')
@@ -33,6 +44,9 @@ export default function QuizResultPage() {
 
     const storedReview = sessionStorage.getItem('quiz_review')
     if (storedReview) setReview(JSON.parse(storedReview))
+
+    const storedGam = sessionStorage.getItem('quiz_gamification')
+    if (storedGam) setGamification(JSON.parse(storedGam))
   }, [])
 
   const generateExplanations = async () => {
@@ -60,6 +74,8 @@ export default function QuizResultPage() {
 
   if (!result) return null
 
+  const newBadges = gamification?.new_badges || []
+
   const percentage = Math.round((result.score / result.total) * 100)
   const color = percentage === 100 ? '#06B6D4' : percentage >= 60 ? '#22C55E' : '#F59E0B'
 
@@ -68,6 +84,7 @@ export default function QuizResultPage() {
     sessionStorage.removeItem('quiz_meta')
     sessionStorage.removeItem('quiz_result')
     sessionStorage.removeItem('quiz_review')
+    sessionStorage.removeItem('quiz_gamification')
     router.push('/quiz')
   }
 
@@ -83,9 +100,37 @@ export default function QuizResultPage() {
           You got {result.score} out of {result.total} correct.
         </p>
         <div style={{ fontSize: 56, fontWeight: 900, color, marginBottom: 12 }}>{percentage}%</div>
-        <div style={{ fontSize: 13, color: '#7B6FA0', marginBottom: 28 }}>
+        <div style={{ fontSize: 13, color: '#7B6FA0', marginBottom: 16 }}>
           Time taken: {Math.floor(result.time_spent / 60)}m {result.time_spent % 60}s
         </div>
+        {gamification && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 20 }}>
+            <div style={{ background: '#150D40', border: '1px solid #1E1450', borderRadius: 10, padding: '10px 18px', textAlign: 'center' }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#06B6D4' }}>+{gamification.xp_gained} XP</div>
+              <div style={{ fontSize: 11, color: '#7B6FA0' }}>Total {gamification.xp} · Level {gamification.level}</div>
+            </div>
+            <div style={{ background: '#150D40', border: '1px solid #1E1450', borderRadius: 10, padding: '10px 18px', textAlign: 'center' }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#F59E0B' }}>🔥 {gamification.streak}d</div>
+              <div style={{ fontSize: 11, color: '#7B6FA0' }}>Streak</div>
+            </div>
+          </div>
+        )}
+        {newBadges.length > 0 && (
+          <div style={{ background: '#7C3AED18', border: '1px solid #7C3AED44', borderRadius: 12, padding: '14px 20px', marginBottom: 24, maxWidth: 420 }}>
+            <div style={{ fontSize: 12, color: '#A78BFA', fontWeight: 700, marginBottom: 10, textAlign: 'center' }}>🎉 NEW BADGE{newBadges.length > 1 ? 'S' : ''} EARNED</div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+              {newBadges.map(b => (
+                <div key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#150D40', border: '1px solid #7C3AED44', borderRadius: 10, padding: '8px 14px' }}>
+                  <span style={{ fontSize: 22 }}>{badgeInfo(b).emoji}</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{badgeInfo(b).label}</div>
+                    <div style={{ fontSize: 11, color: '#7B6FA0' }}>{badgeInfo(b).desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
           {review.length > 0 && (
             <>

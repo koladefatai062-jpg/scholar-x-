@@ -30,6 +30,7 @@ interface Group {
   name: string
   subject: string | null
   description: string | null
+  avatar_url: string | null
   member_count: number
   status: string
   is_joined: boolean
@@ -313,8 +314,10 @@ export default function CommunityPage() {
               {groups.map(group => (
                 <div key={group.id} style={{ background: C.card, border: `1px solid ${group.is_joined ? C.accent + '44' : C.border}`, borderRadius: 12, padding: 20 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: `linear-gradient(135deg,${C.accent}44,${C.cyan}33)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Users size={18} color={C.accent} />
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: group.avatar_url ? 'transparent' : `linear-gradient(135deg,${C.accent}44,${C.cyan}33)`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                      {group.avatar_url
+                        ? <img src={group.avatar_url} alt={group.name} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 10 }} />
+                        : <Users size={18} color={C.accent} />}
                     </div>
                     {group.is_joined && <span style={{ fontSize: 10, padding: '3px 8px', background: `${C.green}20`, border: `1px solid ${C.green}44`, borderRadius: 4, color: C.green, fontWeight: 600 }}>Joined</span>}
                   </div>

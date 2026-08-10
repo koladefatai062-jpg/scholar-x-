@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Premium required to create groups' }, { status: 403 })
   }
 
-  const { name, subject, description } = await request.json()
+  const { name, subject, description, avatar_url } = await request.json()
 
   if (!name?.trim()) {
     return NextResponse.json({ error: 'Group name is required' }, { status: 400 })
@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
       name: name.trim(),
       subject,
       description,
+      avatar_url: typeof avatar_url === 'string' ? avatar_url : null,
       created_by: user.id,
       status: 'pending',
     })

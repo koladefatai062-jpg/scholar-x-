@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Send, ArrowLeft, Users, Paperclip, Lock, MoreVertical, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck, X, UserMinus, Shield, Info, Edit3, Download, Mail, Crown } from 'lucide-react'
+import { Send, ArrowLeft, Users, Paperclip, Lock, MoreVertical, Reply, Copy, Pencil, Trash2, Forward, Check, CheckCheck, X, UserMinus, Shield, Info, Edit3, Download, Mail, Crown, Smile, Mic, Square, Image as ImageIcon, Camera } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import Avatar from '@/components/Avatar'
 
@@ -12,6 +12,18 @@ const C = {
   text: '#E2D9F3', muted: '#7B6FA0', white: '#FFFFFF',
   gold: '#F59E0B', green: '#22C55E', red: '#EF4444',
 }
+
+const WALLPAPERS: Record<string, string> = {
+  default: 'radial-gradient(circle at 20% 20%, #1A0F4E 0%, #0A0628 55%, #06032A 100%)',
+  purple: 'linear-gradient(135deg, #1A0F4E 0%, #2E1065 50%, #0A0628 100%)',
+  ocean: 'linear-gradient(135deg, #052E3B 0%, #064E68 50%, #02212C 100%)',
+  forest: 'linear-gradient(135deg, #04211A 0%, #064E3B 50%, #02281F 100%)',
+  ember: 'linear-gradient(135deg, #1F1205 0%, #431407 50%, #120B02 100%)',
+  dots: 'radial-gradient(#2A1B66 1px, transparent 1px), #0A0628',
+  grid: 'linear-gradient(rgba(124,58,237,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(124,58,237,0.08) 1px, transparent 1px), #0A0628',
+}
+
+const EMOJIS = ['😀','😂','😊','🥰','😎','🤔','😴','🤯','😭','😡','👍','👎','👏','🙏','💪','🤝','🔥','⚡','💯','🎉','❤️','💜','💙','💚','✨','🌟','⭐','🎯','📚','✏️','📝','💡','🧠','✅','❌','❓','❗','🙌','🤗','😅','🥳','😇','🤩','👀','🫡','🦾','🚀','📈','💎','🛡️','🔔','📌','📎','💬','🗣️','👥','🧑‍🎓','👩‍🎓','🏫','📖','🧪','🔬','🧮','💻','🎓']
 
 const MSG_SELECT = `*, users (full_name, is_premium, avatar_url), reply:reply_to_id (id, content, file_url, file_name, file_type, user_id, users (full_name))`
 
@@ -44,6 +56,7 @@ interface Group {
   name: string
   subject: string | null
   description: string | null
+  avatar_url: string | null
   member_count: number
 }
 
@@ -78,11 +91,22 @@ export default function GroupChatPage() {
   const [actionMsg, setActionMsg] = useState<Message | null>(null)
   const [groupForm, setGroupForm] = useState({ name: '', subject: '', description: '' })
   const [savingGroup, setSavingGroup] = useState(false)
+  const [emojiOpen, setEmojiOpen] = useState(false)
+  const [wallpaper, setWallpaper] = useState<string>('default')
+  const [wallpaperOpen, setWallpaperOpen] = useState(false)
+  const [recording, setRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const groupAvatarInputRef = useRef<HTMLInputElement>(null)
+  const wallpaperInputRef = useRef<HTMLInputElement>(null)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const markReadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -90,6 +114,17 @@ export default function GroupChatPage() {
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  useEffect(() => {
+    const saved = localStorage.getItem(`wallpaper-${groupId}`)
+    if (saved) setWallpaper(saved)
+  }, [groupId])
+
+  useEffect(() => {
+    if (infoOpen && group) {
+      setGroupForm({ name: group.name || '', subject: group.subject || '', description: group.description || '' })
+    }
+  }, [infoOpen])
 
   useEffect(() => { init() }, [groupId])
 
@@ -279,6 +314,130 @@ export default function GroupChatPage() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
 
+  const insertEmoji = (emoji: string) => {
+    setInput(prev => prev + emoji)
+    broadcastTyping(true)
+  }
+
+  const setWallpaperAndSave = (key: string) => {
+    setWallpaper(key)
+    localStorage.setItem(`wallpaper-${groupId}`, key)
+    setWallpaperOpen(false)
+  }
+
+  const handleWallpaperUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { alert('Only PNG, JPG or WEBP images allowed'); return }
+    if (file.size > 2 * 1024 * 1024) { alert('Max wallpaper size is 2MB'); return }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const url = reader.result as string
+      localStorage.setItem(`wallpaper-${groupId}`, url)
+      setWallpaper(url)
+      setWallpaperOpen(false)
+    }
+    reader.readAsDataURL(file)
+    if (wallpaperInputRef.current) wallpaperInputRef.current.value = ''
+  }
+
+  const resetWallpaper = () => {
+    localStorage.removeItem(`wallpaper-${groupId}`)
+    setWallpaper('default')
+    setWallpaperOpen(false)
+  }
+
+  const startRecording = async () => {
+    if (recording) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm'
+      const recorder = new MediaRecorder(stream, { mimeType: mime })
+      recorderRef.current = recorder
+      chunksRef.current = []
+      recorder.ondataavailable = (ev) => { if (ev.data.size > 0) chunksRef.current.push(ev.data) }
+      recorder.onstop = () => sendVoiceNote()
+      recorder.start()
+      setRecording(true)
+      setRecordingTime(0)
+      recordingTimerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
+    } catch {
+      alert('Microphone access denied. Allow mic permission to send voice notes.')
+    }
+  }
+
+  const stopRecording = () => {
+    if (!recording || !recorderRef.current) return
+    recorderRef.current.stop()
+    recorderRef.current.stream.getTracks().forEach(t => t.stop())
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+    setRecording(false)
+    setRecordingTime(0)
+  }
+
+  const sendVoiceNote = async () => {
+    if (!chunksRef.current.length) return
+    const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+    if (blob.size < 1000) return
+    setUploading(true)
+    try {
+      const fileName = `${groupId}/voice/${Date.now()}.webm`
+      const { error: uploadError } = await supabase.storage.from('group-files').upload(fileName, blob, { contentType: 'audio/webm' })
+      if (uploadError) throw uploadError
+      const { data: { publicUrl } } = supabase.storage.from('group-files').getPublicUrl(fileName)
+      await fetch(`/api/community/groups/${groupId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file_url: publicUrl, file_name: 'Voice note.webm',
+          file_type: 'audio', file_size: blob.size, reply_to_id: replyTo?.id || null,
+        }),
+      })
+      setReplyTo(null)
+      fetchMessages(true)
+    } catch (err: any) { alert('Voice note failed: ' + err.message) }
+    setUploading(false)
+  }
+
+  const uploadGroupAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { alert('Only PNG, JPG or WEBP images allowed'); return }
+    if (file.size > 2 * 1024 * 1024) { alert('Max image size is 2MB'); return }
+    setUploadingAvatar(true)
+    try {
+      const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+      const fileName = `${groupId}/avatar.${ext}`
+      const { error: uploadError } = await supabase.storage.from('group-avatars').upload(fileName, file, { upsert: true })
+      if (uploadError) throw uploadError
+      const { data: { publicUrl } } = supabase.storage.from('group-avatars').getPublicUrl(fileName)
+      await fetch(`/api/community/groups/${groupId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar_url: publicUrl }),
+      })
+      await refreshGroupInfo()
+    } catch (err: any) { alert('Upload failed: ' + (err.message || 'Please try again')) }
+    setUploadingAvatar(false)
+    if (groupAvatarInputRef.current) groupAvatarInputRef.current.value = ''
+  }
+
+  const removeGroupAvatar = async () => {
+    if (!group?.avatar_url) return
+    setUploadingAvatar(true)
+    try {
+      const oldPath = group.avatar_url.split('/group-avatars/')[1]
+      if (oldPath) await supabase.storage.from('group-avatars').remove([oldPath])
+    } catch {}
+    await fetch(`/api/community/groups/${groupId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ avatar_url: null }),
+    })
+    await refreshGroupInfo()
+    setUploadingAvatar(false)
+  }
+
   const editMessage = async () => {
     if (!editing || !editText.trim()) return
     await fetch(`/api/community/groups/${groupId}/messages/${editing.id}`, {
@@ -432,7 +591,7 @@ export default function GroupChatPage() {
                   {msg.reply.user_id === currentUserId ? 'You' : (msg.reply.users?.full_name || 'Member')}
                 </div>
                 <div style={{ color: isOwn ? 'rgba(255,255,255,0.6)' : C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {msg.reply.file_type === 'image' ? '📷 Image' : msg.reply.file_type === 'pdf' ? `📄 ${msg.reply.file_name}` : msg.reply.content}
+                  {msg.reply.file_type === 'image' ? '📷 Image' : msg.reply.file_type === 'pdf' ? `📄 ${msg.reply.file_name}` : msg.reply.file_type === 'audio' ? '🎵 Voice note' : msg.reply.content}
                 </div>
               </div>
             )}
@@ -447,6 +606,18 @@ export default function GroupChatPage() {
                       <button onClick={() => setLightbox({ url: msg.file_url!, name: msg.file_name || 'image' })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'zoom-in', display: 'block', marginTop: msg.content ? 8 : 0 }}>
                         <img src={msg.file_url} alt={msg.file_name || 'image'} style={{ maxWidth: '100%', maxHeight: 340, borderRadius: 8, display: 'block' }} />
                       </button>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 6, justifyContent: 'flex-end' }}>
+                        <button onClick={() => downloadFile(msg.file_url!, msg.file_name)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: `1px solid ${isOwn ? 'rgba(255,255,255,0.4)' : C.border}`, color: isOwn ? '#fff' : C.muted, cursor: 'pointer', padding: '4px 8px', borderRadius: 6, fontSize: 11 }}>
+                          <Download size={12} /> Save
+                        </button>
+                      </div>
+                    </>
+                  )}
+                  {msg.file_url && msg.file_type === 'audio' && (
+                    <>
+                      <div style={{ marginTop: msg.content ? 8 : 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <audio src={msg.file_url} controls preload="metadata" style={{ maxWidth: 220, height: 38, filter: 'invert(0)', borderRadius: 8 }} />
+                      </div>
                       <div style={{ display: 'flex', gap: 6, marginTop: 6, justifyContent: 'flex-end' }}>
                         <button onClick={() => downloadFile(msg.file_url!, msg.file_name)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: `1px solid ${isOwn ? 'rgba(255,255,255,0.4)' : C.border}`, color: isOwn ? '#fff' : C.muted, cursor: 'pointer', padding: '4px 8px', borderRadius: 6, fontSize: 11 }}>
                           <Download size={12} /> Save
@@ -507,8 +678,10 @@ export default function GroupChatPage() {
           <ArrowLeft size={20} />
         </button>
         <button onClick={() => setInfoOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', cursor: 'pointer', flex: 1, textAlign: 'left', padding: 0 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg,${C.accent}44,${C.cyan}33)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Users size={16} color={C.accent} />
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: group?.avatar_url ? 'transparent' : `linear-gradient(135deg,${C.accent}44,${C.cyan}33)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+            {group?.avatar_url
+              ? <img src={group.avatar_url} alt={group.name} style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover' }} />
+              : <Users size={16} color={C.accent} />}
           </div>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.white }}>{group?.name || 'Loading...'}</div>
@@ -523,7 +696,12 @@ export default function GroupChatPage() {
       </div>
 
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 8px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 8px', display: 'flex', flexDirection: 'column', gap: 8, background: WALLPAPERS[wallpaper] ? (wallpaper === 'dots' || wallpaper === 'grid' ? `${WALLPAPERS[wallpaper]}, ${C.bg}` : WALLPAPERS[wallpaper]) : `url("${wallpaper}") center / cover, ${C.bg}` }}>
+        <div style={{ position: 'sticky', top: 0, right: 0, textAlign: 'right', zIndex: 5, marginBottom: -8 }}>
+          <button onClick={() => setWallpaperOpen(true)} style={{ background: 'rgba(10,6,40,0.6)', border: `1px solid ${C.border}`, color: C.muted, width: 30, height: 30, borderRadius: 8, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }} title="Change wallpaper">
+            <ImageIcon size={14} />
+          </button>
+        </div>
         {hasMore && (
           <div style={{ textAlign: 'center', marginBottom: 8 }}>
             <button onClick={() => fetchMessages(false)} disabled={loadingMore} style={{ background: `${C.accent}22`, border: `1px solid ${C.accent}44`, color: C.accent, padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
@@ -577,25 +755,51 @@ export default function GroupChatPage() {
       )}
 
       {/* Input */}
-      <div style={{ padding: '12px 16px 16px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 10, alignItems: 'flex-end', flexShrink: 0 }}>
+      <div style={{ padding: '12px 16px 16px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 10, alignItems: 'flex-end', flexShrink: 0, position: 'relative' }}>
         <input ref={fileRef} type="file" accept=".pdf,image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
+        {emojiOpen && (
+          <div style={{ position: 'absolute', bottom: '100%', left: 8, right: 8, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 12, zIndex: 20, boxShadow: '0 -8px 30px rgba(0,0,0,0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+              <button onClick={() => setEmojiOpen(false)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer' }}><X size={16} /></button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
+              {EMOJIS.map(e => (
+                <button key={e} onClick={() => insertEmoji(e)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', padding: 2, borderRadius: 6 }}>{e}</button>
+              ))}
+            </div>
+          </div>
+        )}
         <button onClick={() => fileRef.current?.click()} disabled={uploading || (!isPremium && dailyUploads >= 1)}
           style={{ background: 'none', border: `1px solid ${C.border}`, color: (!isPremium && dailyUploads >= 1) ? C.border : C.muted, width: 40, height: 40, borderRadius: 10, cursor: (!isPremium && dailyUploads >= 1) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Paperclip size={16} />
+        </button>
+        <button onClick={() => { setEmojiOpen(o => !o); setWallpaperOpen(false) }} style={{ background: 'none', border: `1px solid ${emojiOpen ? C.accent : C.border}`, color: emojiOpen ? C.accent : C.muted, width: 40, height: 40, borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Smile size={16} />
         </button>
         {editing ? (
           <div style={{ flex: 1, display: 'flex', gap: 8 }}>
             <input value={editText} onChange={e => setEditText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') editMessage() }} style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none' }} />
             <button onClick={editMessage} disabled={!editText.trim()} style={{ background: C.green, border: 'none', color: '#fff', padding: '0 16px', borderRadius: 10, cursor: editText.trim() ? 'pointer' : 'default', fontSize: 13, fontWeight: 700 }}>Save</button>
           </div>
+        ) : recording ? (
+          <button onClick={stopRecording} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: `${C.red}18`, border: `1px solid ${C.red}55`, color: C.red, height: 42, borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
+            <Square size={15} fill={C.red} /> Recording {Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')} — tap to stop
+          </button>
         ) : (
           <>
             <textarea value={input} onChange={e => handleTyping(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type a message..." rows={1}
               style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', resize: 'none', fontFamily: 'inherit', lineHeight: 1.5 }} />
-            <button onClick={sendMessage} disabled={!input.trim() || sending}
-              style={{ background: input.trim() ? `linear-gradient(135deg,${C.accent},#5B21B6)` : C.border, border: 'none', color: '#fff', width: 40, height: 40, borderRadius: 10, cursor: input.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Send size={16} />
-            </button>
+            {input.trim() ? (
+              <button onClick={sendMessage} disabled={sending}
+                style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', width: 40, height: 40, borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Send size={16} />
+              </button>
+            ) : (
+              <button onClick={startRecording}
+                style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', width: 40, height: 40, borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Mic size={16} />
+              </button>
+            )}
           </>
         )}
       </div>
@@ -611,6 +815,25 @@ export default function GroupChatPage() {
 
             {isAdmin && (
               <div style={{ marginBottom: 16, padding: 12, background: C.card, borderRadius: 10 }}>
+                <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}><Camera size={13} /> Group photo</div>
+                <input ref={groupAvatarInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={uploadGroupAvatar} style={{ display: 'none' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                  <div style={{ width: 64, height: 64, borderRadius: 14, background: group?.avatar_url ? 'transparent' : `linear-gradient(135deg,${C.accent}44,${C.cyan}33)`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                    {group?.avatar_url
+                      ? <img src={group.avatar_url} alt={group.name} style={{ width: 64, height: 64, borderRadius: 14, objectFit: 'cover' }} />
+                      : <Users size={24} color={C.accent} />}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <button onClick={() => groupAvatarInputRef.current?.click()} disabled={uploadingAvatar} style={{ background: `${C.accent}1E`, border: `1px solid ${C.accent}44`, color: C.accent, padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      {uploadingAvatar ? 'Uploading...' : group?.avatar_url ? 'Change photo' : 'Upload photo'}
+                    </button>
+                    {group?.avatar_url && (
+                      <button onClick={removeGroupAvatar} style={{ background: 'none', border: `1px solid ${C.red}44`, color: C.red, padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                        Remove photo
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><Edit3 size={13} /> Edit group</div>
                 {[['Name', 'name'], ['Subject', 'subject'], ['Description', 'description']].map(([label, key]) => (
                   <input key={key} value={groupForm[key as 'name' | 'subject' | 'description']} onChange={e => setGroupForm(prev => ({ ...prev, [key]: e.target.value }))}
@@ -621,6 +844,24 @@ export default function GroupChatPage() {
                 </button>
               </div>
             )}
+
+            <div style={{ marginBottom: 16, padding: 12, background: C.card, borderRadius: 10 }}>
+              <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}><ImageIcon size={13} /> Chat wallpaper</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 8 }}>
+                {Object.entries(WALLPAPERS).map(([key]) => (
+                  <button key={key} onClick={() => setWallpaperAndSave(key)} style={{ height: 44, borderRadius: 8, border: `2px solid ${wallpaper === key ? C.accent : 'transparent'}`, background: WALLPAPERS[key], cursor: 'pointer', backgroundSize: 'cover' }} title={key} />
+                ))}
+              </div>
+              <input ref={wallpaperInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleWallpaperUpload} style={{ display: 'none' }} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => wallpaperInputRef.current?.click()} style={{ background: 'none', border: `1px solid ${C.border}`, color: C.text, padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  Custom image
+                </button>
+                <button onClick={resetWallpaper} style={{ background: 'none', border: `1px solid ${C.border}`, color: C.muted, padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  Reset to dark
+                </button>
+              </div>
+            </div>
 
             <div style={{ fontSize: 13, color: C.muted, marginBottom: 6, fontWeight: 600 }}>Members · {members.length}</div>
             {members.map(m => {

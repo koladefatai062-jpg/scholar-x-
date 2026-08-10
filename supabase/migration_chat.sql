@@ -9,6 +9,7 @@
 -- 1. Columns that already exist are left untouched
 -- ------------------------------------------------------------
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE groups ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
 ALTER TABLE group_members ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member';
 ALTER TABLE group_members ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMPTZ DEFAULT now();
@@ -58,6 +59,38 @@ DROP POLICY IF EXISTS "push_tokens_update_own" ON push_tokens;
 CREATE POLICY "push_tokens_update_own" ON push_tokens FOR UPDATE USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "push_tokens_delete_own" ON push_tokens;
 CREATE POLICY "push_tokens_delete_own" ON push_tokens FOR DELETE USING (auth.uid() = user_id);
+
+-- ------------------------------------------------------------
+-- 3b. group-avatars storage bucket (group admins manage images)
+-- ------------------------------------------------------------
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('group-avatars', 'group-avatars', true, 2097152, ARRAY['image/png', 'image/jpeg', 'image/webp'])
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "group_avatars_read" ON storage.objects;
+CREATE POLICY "group_avatars_read" ON storage.objects
+  FOR SELECT USING (bucket_id = 'group-avatars');
+
+DROP POLICY IF EXISTS "group_avatars_insert_admin" ON storage.objects;
+CREATE POLICY "group_avatars_insert_admin" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'group-avatars' AND
+    public.is_group_admin((storage.foldername(name))[1]::uuid)
+  );
+
+DROP POLICY IF EXISTS "group_avatars_update_admin" ON storage.objects;
+CREATE POLICY "group_avatars_update_admin" ON storage.objects
+  FOR UPDATE USING (
+    bucket_id = 'group-avatars' AND
+    public.is_group_admin((storage.foldername(name))[1]::uuid)
+  );
+
+DROP POLICY IF EXISTS "group_avatars_delete_admin" ON storage.objects;
+CREATE POLICY "group_avatars_delete_admin" ON storage.objects
+  FOR DELETE USING (
+    bucket_id = 'group-avatars' AND
+    public.is_group_admin((storage.foldername(name))[1]::uuid)
+  );
 
 -- ------------------------------------------------------------
 -- 4. Broader roster / admin policies on existing tables

@@ -44,10 +44,11 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ group
   if (membership?.role !== 'admin') return NextResponse.json({ error: 'Only admins can edit the group' }, { status: 403 })
 
   const body = await request.json()
-  const update: Record<string, string> = {}
+  const update: Record<string, string | null> = {}
   if (typeof body.name === 'string' && body.name.trim()) update.name = body.name.trim()
   if (typeof body.subject === 'string') update.subject = body.subject || null
   if (typeof body.description === 'string') update.description = body.description || null
+  if (typeof body.avatar_url === 'string') update.avatar_url = body.avatar_url || null
 
   if (!Object.keys(update).length) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
 

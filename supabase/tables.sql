@@ -153,6 +153,7 @@ CREATE TABLE IF NOT EXISTS groups (
   name TEXT NOT NULL,
   subject TEXT,
   description TEXT,
+  avatar_url TEXT,
   created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   status TEXT DEFAULT 'pending' CHECK (status IN ('active', 'pending', 'rejected')),
   member_count INTEGER DEFAULT 0,
@@ -160,6 +161,7 @@ CREATE TABLE IF NOT EXISTS groups (
 );
 
 ALTER TABLE groups ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+ALTER TABLE groups ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
 CREATE TABLE IF NOT EXISTS group_members (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -605,6 +607,38 @@ CREATE POLICY "avatars_update_own" ON storage.objects
 DROP POLICY IF EXISTS "avatars_delete_own" ON storage.objects;
 CREATE POLICY "avatars_delete_own" ON storage.objects
   FOR DELETE USING (bucket_id = 'avatars' AND auth.uid() = (storage.foldername(name))[1]::uuid);
+
+-- ============================================================
+-- Storage: group-avatars bucket + policies (group admins manage)
+-- ============================================================
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('group-avatars', 'group-avatars', true, 2097152, ARRAY['image/png', 'image/jpeg', 'image/webp'])
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "group_avatars_read" ON storage.objects;
+CREATE POLICY "group_avatars_read" ON storage.objects
+  FOR SELECT USING (bucket_id = 'group-avatars');
+
+DROP POLICY IF EXISTS "group_avatars_insert_admin" ON storage.objects;
+CREATE POLICY "group_avatars_insert_admin" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'group-avatars' AND
+    public.is_group_admin((storage.foldername(name))[1]::uuid)
+  );
+
+DROP POLICY IF EXISTS "group_avatars_update_admin" ON storage.objects;
+CREATE POLICY "group_avatars_update_admin" ON storage.objects
+  FOR UPDATE USING (
+    bucket_id = 'group-avatars' AND
+    public.is_group_admin((storage.foldername(name))[1]::uuid)
+  );
+
+DROP POLICY IF EXISTS "group_avatars_delete_admin" ON storage.objects;
+CREATE POLICY "group_avatars_delete_admin" ON storage.objects
+  FOR DELETE USING (
+    bucket_id = 'group-avatars' AND
+    public.is_group_admin((storage.foldername(name))[1]::uuid)
+  );
 
 -- ============================================================
 -- Waitlist (public signup list — owner gets email alerts)

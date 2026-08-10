@@ -3,8 +3,9 @@ import { createAdminClient, createServerSupabaseClient } from '@/lib/supabase-se
 import { APP_FROM, mailTemplate } from '@/lib/mail'
 import { Resend } from 'resend'
 
-const BATCH_SIZE = 100
-const CHUNK_DELAY_MS = 400
+const BATCH_SIZE = 50
+const CHUNK_DELAY_MS = 1100
+const MAX_RETRIES = 3
 
 async function isAdmin(userId: string) {
   const admin = createAdminClient()
@@ -92,15 +93,30 @@ export async function POST(request: NextRequest) {
 
   for (let i = 0; i < targets.length; i += BATCH_SIZE) {
     const chunk = targets.slice(i, i + BATCH_SIZE).map(to => ({ from: APP_FROM, to, subject: subjectStr, html }))
-    try {
-      const results = await resend.batch.send(chunk)
-      const ids = results.data?.data ?? []
-      sent += ids.length
-      if (results.error && failures.length < 5) failures.push(results.error.message)
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'batch failed'
+    let ok = false
+    for (let attempt = 0; attempt < MAX_RETRIES && !ok; attempt++) {
+      try {
+        const results = await resend.batch.send(chunk)
+        const ids = results.data?.data ?? []
+        sent += ids.length
+        if (results.error && failures.length < 5) failures.push(results.error.message)
+        ok = true
+      } catch (e) {
+        const err = e as Error & { statusCode?: number; retryAfterSeconds?: number }
+        const isRateLimit = err.statusCode === 429 || /rate.?limit|too many requests/i.test(err.message || '')
+        if (!isRateLimit || attempt === MAX_RETRIES - 1) {
+          failed += chunk.length
+          if (failures.length < 5) failures.push(err.message || 'batch failed')
+          ok = true
+          break
+        }
+        // Rate limited — wait, then retry the same chunk.
+        await new Promise(res => setTimeout(res, 1000 * (attempt + 2)))
+      }
+    }
+    if (!ok) {
       failed += chunk.length
-      if (failures.length < 5) failures.push(msg)
+      if (failures.length < 5) failures.push('unable to send chunk after retries')
     }
     if (i + BATCH_SIZE < targets.length) {
       await new Promise(res => setTimeout(res, CHUNK_DELAY_MS))

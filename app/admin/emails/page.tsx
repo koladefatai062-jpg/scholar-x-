@@ -109,7 +109,9 @@ export default function AdminEmailsPage() {
       )}
 
       <div style={{ fontSize: 12, color: C.gold, marginBottom: 14 }}>
-        Note: Resend free plan allows ~100 emails/day. If the list is bigger than that, upgrade or send in waves.
+        Note: Resend free plan = 100 emails/day, 2/sec. Sends are paced automatically. Also, the default
+        <code style={{ background: C.surface, padding: '1px 5px', borderRadius: 4 }}> onboarding@resend.dev </code>
+        sender only delivers to <b>your own</b> Resend account email — verify a domain (Settings → Domains) to reach real users, or upgrade.
       </div>
 
       <div style={{ display: 'flex', gap: 10 }}>

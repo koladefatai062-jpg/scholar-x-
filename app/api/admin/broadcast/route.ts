@@ -34,7 +34,15 @@ export async function GET() {
     admin.from('waitlist').select('id', { count: 'exact', head: true }),
     admin.from('users').select('id', { count: 'exact', head: true }),
   ])
-  return NextResponse.json({ counts: { waitlist: waitlist || 0, users: users || 0 } })
+  return NextResponse.json({
+    counts: { waitlist: waitlist || 0, users: users || 0 },
+    providers: {
+      resend: Boolean(process.env.RESEND_API_KEY),
+      smtp: smtpConfigured(),
+      smtpUser: process.env.SMTP_USER ? String(process.env.SMTP_USER).replace(/^(.).+@/, '$1***@') : null,
+      from: process.env.APP_FROM || 'ScholarX <onboarding@resend.dev>',
+    },
+  })
 }
 
 export async function POST(request: NextRequest) {

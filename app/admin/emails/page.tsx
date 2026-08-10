@@ -19,6 +19,7 @@ type Audience = (typeof AUDIENCES)[number]['id']
 
 export default function AdminEmailsPage() {
   const [counts, setCounts] = useState<{ waitlist: number; users: number }>({ waitlist: 0, users: 0 })
+  const [providers, setProviders] = useState<{ resend: boolean; smtp: boolean; smtpUser: string | null; from: string } | null>(null)
   const [audience, setAudience] = useState<Audience>('waitlist')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
@@ -30,7 +31,10 @@ export default function AdminEmailsPage() {
   useEffect(() => {
     fetch('/api/admin/broadcast')
       .then(r => r.json())
-      .then(d => d.counts && setCounts(d.counts))
+      .then(d => {
+        if (d.counts) setCounts(d.counts)
+        if (d.providers) setProviders(d.providers)
+      })
       .catch(() => {})
   }, [])
 
@@ -64,6 +68,19 @@ export default function AdminEmailsPage() {
         <p style={{ color: C.muted, fontSize: 14 }}>
           Broadcast one email to the waitlist and/or all users at once.
         </p>
+        {providers && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+            <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1px solid ${C.border}`, background: C.card, color: C.muted }}>
+              Resend: <b style={{ color: providers.resend ? C.green : C.red }}>{providers.resend ? 'configured' : 'NOT set'}</b>
+            </span>
+            <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1px solid ${C.border}`, background: C.card, color: C.muted }}>
+              SMTP: <b style={{ color: providers.smtp ? C.green : C.red }}>{providers.smtp ? (providers.smtpUser || 'configured') : 'NOT set'}</b>
+            </span>
+            <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1px solid ${C.border}`, background: C.card, color: C.muted }}>
+              From: <b style={{ color: C.text }}>{providers.from}</b>
+            </span>
+          </div>
+        )}
       </div>
 
       <div style={{ marginBottom: 20 }}>

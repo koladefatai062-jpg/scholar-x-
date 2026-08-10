@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
   is_premium BOOLEAN DEFAULT false,
   premium_expires_at TIMESTAMPTZ,
   avatar_url TEXT,
+  email_verified BOOLEAN DEFAULT false,
   streak INTEGER DEFAULT 0,
   xp INTEGER DEFAULT 0,
   badges TEXT[] DEFAULT '{}',
@@ -27,6 +28,22 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS badges TEXT[] DEFAULT '{}';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false;
+
+-- ------------------------------------------------------------
+-- Verification codes (custom email OTP, sent by the app via Resend).
+-- No RLS policies: only the service role (app server) accesses this.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS verification_codes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  email TEXT NOT NULL,
+  purpose TEXT NOT NULL DEFAULT 'signup' CHECK (purpose IN ('signup', 'reset')),
+  code_hash TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_verification_codes_email ON verification_codes (email, purpose);
 
 -- ------------------------------------------------------------
 -- Quiz questions

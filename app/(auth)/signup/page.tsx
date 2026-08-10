@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import Logo from '@/components/Logo'
+import VerifyCodeForm from '@/components/VerifyCodeForm'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40', border: '#1E1450',
@@ -28,6 +29,7 @@ export default function SignupPage() {
   const [level, setLevel] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [verified, setVerified] = useState(false)
 
   const handleStep1 = () => {
     if (!fullName || !email || !password) { setError('Fill in all fields'); return }
@@ -163,18 +165,23 @@ export default function SignupPage() {
           </>
         )}
 
-        {/* STEP 3 — Success */}
-        {step === 3 && (
+        {/* STEP 3 — Email verification */}
+        {step === 3 && !verified && (
+          <VerifyCodeForm email={email} purpose="signup" onVerified={() => {
+            setVerified(true)
+            setTimeout(() => router.push('/dashboard'), 1200)
+          }} />
+        )}
+
+        {/* STEP 4 — Success */}
+        {step === 3 && verified && (
           <div style={{ textAlign: 'center', paddingTop: 20 }}>
             <div style={{ width: 64, height: 64, borderRadius: '50%', background: `linear-gradient(135deg,${C.accent},${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
               <Check size={28} color="#fff" />
             </div>
             <h2 style={{ fontSize: 26, fontWeight: 800, color: C.white, marginBottom: 8 }}>You're in.</h2>
-            <p style={{ color: C.muted, fontSize: 14, marginBottom: 8 }}>Welcome to ScholarX. Check your email to verify your account.</p>
-            <p style={{ color: C.muted, fontSize: 13, marginBottom: 32 }}>Then log in to access your dashboard.</p>
-            <button onClick={() => router.push('/login')} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px 32px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
-              Go to login
-            </button>
+            <p style={{ color: C.muted, fontSize: 14, marginBottom: 8 }}>Welcome to ScholarX. Your email is verified.</p>
+            <p style={{ color: C.muted, fontSize: 13, marginBottom: 32 }}>Taking you to your dashboard...</p>
           </div>
         )}
       </div>

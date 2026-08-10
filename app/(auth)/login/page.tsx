@@ -27,7 +27,19 @@ export default function LoginPage() {
     setError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { setError(error.message); setLoading(false); return }
-    router.push('/dashboard')
+
+    // If the account hasn't verified its email, force the OTP screen first.
+    try {
+      const res = await fetch('/api/auth/me')
+      const data = await res.json()
+      if (data.user && !data.user.email_verified) {
+        router.push(`/verify?email=${encodeURIComponent(email)}`)
+        return
+      }
+    } catch {}
+
+    const redirect = new URLSearchParams(window.location.search).get('redirect')
+    router.push(redirect || '/dashboard')
   }
 
   return (
@@ -83,6 +95,12 @@ export default function LoginPage() {
             style={{ background: loading ? C.border : `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer', marginTop: 4 }}
           >
             {loading ? 'Logging in...' : 'Log in'}
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+          <button onClick={() => router.push('/forgot-password')} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontWeight: 500, fontSize: 12 }}>
+            Forgot password?
           </button>
         </div>
 

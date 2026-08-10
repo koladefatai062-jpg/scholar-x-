@@ -27,6 +27,13 @@ export default function DashboardPage() {
       const { data: { user: authUser } } = await supabase.auth.getUser()
       if (!authUser) { router.push('/login'); return }
 
+      // Unverified accounts must confirm their email before using the app.
+      const me = await fetch('/api/auth/me').then(r => r.json()).catch(() => null)
+      if (me?.user && !me.user.email_verified) {
+        router.replace(`/verify?email=${encodeURIComponent(me.user.email)}`)
+        return
+      }
+
       const [{ data: profile }, { data: recentAttempts }, { data: newsData }, { data: oppsData }] = await Promise.all([
         supabase.from('users').select('*').eq('id', authUser.id).single(),
         supabase.from('quiz_attempts').select('*').eq('user_id', authUser.id).order('created_at', { ascending: false }).limit(3),

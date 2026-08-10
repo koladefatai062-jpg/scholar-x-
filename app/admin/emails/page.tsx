@@ -103,8 +103,9 @@ export default function AdminEmailsPage() {
       )}
 
       {result && (
-        <div style={{ background: `${C.green}18`, border: `1px solid ${C.green}44`, borderRadius: 9, padding: '14px 16px', marginBottom: 16, fontSize: 13, color: C.green }}>
-          <b>Done.</b> Sent {result.sent} of {result.total}. {result.failed > 0 ? `${result.failed} failed. ${result.failures?.join('; ') || ''}` : 'All delivered.'}
+        <div style={{ background: result.failed > 0 ? `${C.gold}18` : `${C.green}18`, border: `1px solid ${result.failed > 0 ? `${C.gold}44` : `${C.green}44`}`, borderRadius: 9, padding: '14px 16px', marginBottom: 16, fontSize: 13, color: result.failed > 0 ? C.gold : C.green }}>
+          <b>Done.</b> Sent {result.sent} of {result.total}.
+          {result.failed > 0 ? ` ${result.failed} failed. ${result.failures?.join('; ') || ''}` : result.sent === result.total ? ' All delivered.' : ' Nothing was actually sent — check server logs / Resend Logs.'}
         </div>
       )}
 

@@ -97,9 +97,21 @@ export async function POST(request: NextRequest) {
     for (let attempt = 0; attempt < MAX_RETRIES && !ok; attempt++) {
       try {
         const results = await resend.batch.send(chunk)
-        const ids = results.data?.data ?? []
-        sent += ids.length
-        if (results.error && failures.length < 5) failures.push(results.error.message)
+        const body = results.data as any
+        const items = Array.isArray(body) ? body : Array.isArray(body?.data) ? body.data : null
+
+        if (results.error) {
+          failed += chunk.length
+          if (failures.length < 5) failures.push(results.error.message)
+          console.error('[broadcast] batch error:', results.error.message)
+        } else if (Array.isArray(items)) {
+          sent += items.length
+          console.log(`[broadcast] chunk sent ${items.length}/${chunk.length}`)
+        } else {
+          failed += chunk.length
+          if (failures.length < 5) failures.push('unexpected batch response')
+          console.error('[broadcast] unexpected response:', JSON.stringify(results).slice(0, 500))
+        }
         ok = true
       } catch (e) {
         const err = e as Error & { statusCode?: number; retryAfterSeconds?: number }

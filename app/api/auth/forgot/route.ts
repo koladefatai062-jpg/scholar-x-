@@ -13,13 +13,21 @@ export async function POST(request: NextRequest) {
 
   // Always respond the same way so accounts can't be enumerated.
   const admin = createAdminClient()
-  const { data: user } = await admin.from('users').select('id').eq('email', emailNorm).maybeSingle()
+  const { data: user, error: userError } = await admin.from('users').select('id').eq('email', emailNorm).maybeSingle()
+  if (userError) {
+    console.error('[forgot] lookup failed:', userError.message)
+  }
   if (user) {
     const created = await createOtp(emailNorm, 'reset')
     if (created.ok) {
       const { subject, html } = otpEmailHtml({ email: emailNorm, code: created.code, purpose: 'reset' })
-      await sendEmail({ to: emailNorm, subject, html })
+      const sent = await sendEmail({ to: emailNorm, subject, html })
+      console.log(`[forgot] reset code for ${emailNorm}: ${sent ? 'sent' : 'SEND FAILED (check RESEND_API_KEY / recipient allowed?)'}`)
+    } else {
+      console.warn(`[forgot] code not created for ${emailNorm}: ${created.error}`)
     }
+  } else {
+    console.log(`[forgot] no account found for ${emailNorm} in users table`)
   }
 
   return NextResponse.json({ ok: true })

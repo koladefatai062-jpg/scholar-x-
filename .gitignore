@@ -34,3 +34,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ide / local
+.idea/
+*.iml
+build-out.txt
+tsc-out.txt

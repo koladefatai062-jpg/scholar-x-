@@ -95,12 +95,14 @@ export async function POST(request: NextRequest) {
   let sent = 0
   let failed = 0
   const failures: string[] = []
+  const modes = new Set<string>()
 
   for (let i = 0; i < targets.length; i += BATCH_SIZE) {
     const chunk = targets.slice(i, i + BATCH_SIZE).map(to => ({ to, subject: subjectStr, html }))
     const res = await sendBatchEmails(chunk)
     sent += res.sent
     failed += res.failed
+    modes.add(res.mode)
     if (res.failed > 0 && failures.length < 5) failures.push(`chunk via ${res.mode}: ${res.failed} not delivered`)
     console.log(`[broadcast] chunk: ${res.sent}/${chunk.length} via ${res.mode}`)
     if (i + BATCH_SIZE < targets.length) {
@@ -108,5 +110,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ sent, failed, total: targets.length, failures })
+  return NextResponse.json({ sent, failed, total: targets.length, failures, mode: Array.from(modes).join(',') })
 }

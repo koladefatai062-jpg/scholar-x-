@@ -70,26 +70,27 @@ export function otpEmailHtml({ email, code, purpose }: { email: string; code: st
 }
 
 export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }): Promise<boolean> {
-  const key = process.env.RESEND_API_KEY
-
-  if (key) {
-    try {
-      await new Resend(key).emails.send({ from: APP_FROM, to, subject, html })
-      return true
-    } catch (err) {
-      console.error('[mail] resend send failed, trying SMTP:', err)
-    }
-  }
-
+  // SMTP (e.g. Gmail) delivers to any recipient. Prefer it so broadcasts and
+  // codes reach real users even while the free Resend test sender can't.
   if (SMTP_ENABLED) {
     try {
       await smtp().sendMail({ from: SMTP_FROM, to, subject, html })
       return true
     } catch (err) {
-      console.error('[mail] smtp send failed:', err)
+      console.error('[mail] smtp send failed, trying resend:', err)
+    }
+  }
+
+  const key = process.env.RESEND_API_KEY
+  if (key) {
+    try {
+      await new Resend(key).emails.send({ from: APP_FROM, to, subject, html })
+      return true
+    } catch (err) {
+      console.error('[mail] resend send failed:', err)
     }
   } else {
-    console.warn('[mail] no RESEND_API_KEY and no SMTP config; email skipped')
+    console.warn('[mail] no SMTP config and no RESEND_API_KEY; email skipped')
   }
 
   return false
@@ -99,27 +100,9 @@ export type MailItem = { to: string; subject: string; html: string }
 
 export type BatchResult = { sent: number; failed: number; mode: 'resend' | 'smtp' | 'none' }
 
-// Sends a list of emails, preferring Resend batch and falling back to SMTP
-// (paced, 1/sec) when Resend is unavailable or rejects the recipients.
+// Sends a list of emails, preferring SMTP (delivers to any recipient). Falls
+// back to Resend batch only when SMTP isn't configured.
 export async function sendBatchEmails(items: MailItem[]): Promise<BatchResult> {
-  const key = process.env.RESEND_API_KEY
-
-  if (key) {
-    try {
-      const { data } = await new Resend(key).batch.send(items.map(it => ({ from: APP_FROM, ...it })))
-      const count = (Array.isArray(data) ? data : (data as any)?.data)?.length ?? 0
-      if (count > 0 || items.length === 0) {
-        return { sent: count, failed: items.length - count, mode: 'resend' }
-      }
-      if (data) {
-        return { sent: count, failed: items.length - count, mode: 'resend' }
-      }
-      console.warn('[mail] resend batch returned no ids, trying SMTP')
-    } catch (err) {
-      console.error('[mail] resend batch failed, trying SMTP:', err)
-    }
-  }
-
   if (SMTP_ENABLED) {
     let sent = 0
     const failed: string[] = []
@@ -135,6 +118,18 @@ export async function sendBatchEmails(items: MailItem[]): Promise<BatchResult> {
     }
     if (failed.length) console.error('[mail] smtp batch failures:', failed.join(', '))
     return { sent, failed: items.length - sent, mode: 'smtp' }
+  }
+
+  const key = process.env.RESEND_API_KEY
+  if (key) {
+    try {
+      const { data } = await new Resend(key).batch.send(items.map(it => ({ from: APP_FROM, ...it })))
+      const count = (Array.isArray(data) ? data : (data as any)?.data)?.length ?? 0
+      return { sent: count, failed: items.length - count, mode: 'resend' }
+    } catch (err) {
+      console.error('[mail] resend batch failed:', err)
+      return { sent: 0, failed: items.length, mode: 'resend' }
+    }
   }
 
   return { sent: 0, failed: items.length, mode: 'none' }

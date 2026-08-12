@@ -19,7 +19,7 @@ type Audience = (typeof AUDIENCES)[number]['id']
 
 export default function AdminEmailsPage() {
   const [counts, setCounts] = useState<{ waitlist: number; users: number }>({ waitlist: 0, users: 0 })
-  const [providers, setProviders] = useState<{ resend: boolean; smtp: boolean; smtpUser: string | null; from: string } | null>(null)
+  const [providers, setProviders] = useState<{ resend: boolean; smtp: boolean; smtpStatus: { host: string | null; user: string | null; pass: boolean; ready: boolean }; from: string } | null>(null)
   const [audience, setAudience] = useState<Audience>('waitlist')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
@@ -74,7 +74,11 @@ export default function AdminEmailsPage() {
               Resend: <b style={{ color: providers.resend ? C.green : C.red }}>{providers.resend ? 'configured' : 'NOT set'}</b>
             </span>
             <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1px solid ${C.border}`, background: C.card, color: C.muted }}>
-              SMTP: <b style={{ color: providers.smtp ? C.green : C.red }}>{providers.smtp ? (providers.smtpUser || 'configured') : 'NOT set'}</b>
+              SMTP: <b style={{ color: providers.smtp ? C.green : C.red }}>{providers.smtp ? 'configured' : `NOT set (${[
+                !providers.smtpStatus.host ? 'host' : null,
+                !providers.smtpStatus.user ? 'user' : null,
+                !providers.smtpStatus.pass ? 'pass' : null,
+              ].filter(Boolean).join(', ') || '?'})`}</b>
             </span>
             <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1px solid ${C.border}`, background: C.card, color: C.muted }}>
               From: <b style={{ color: C.text }}>{providers.from}</b>

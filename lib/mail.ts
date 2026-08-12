@@ -8,7 +8,8 @@ export const APP_FROM = process.env.APP_FROM || 'ScholarX <onboarding@resend.dev
 // Gmail/SMTP stopgap: set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS to send
 // when the Resend free test sender can't deliver (its onboarding@resend.dev
 // sender only delivers to the account owner's own email).
-const SMTP_HOST = process.env.SMTP_HOST
+// SMTP_HOST defaults to smtp.gmail.com once SMTP_USER is provided.
+const SMTP_HOST = process.env.SMTP_HOST || (process.env.SMTP_USER ? 'smtp.gmail.com' : '')
 const SMTP_PORT = Number(process.env.SMTP_PORT || 465)
 const SMTP_USER = process.env.SMTP_USER
 const SMTP_PASS = process.env.SMTP_PASS
@@ -16,6 +17,15 @@ const SMTP_ENABLED = Boolean(SMTP_HOST && SMTP_USER && SMTP_PASS)
 
 export function smtpConfigured() {
   return SMTP_ENABLED
+}
+
+export function smtpStatus() {
+  return {
+    host: SMTP_HOST || null,
+    user: SMTP_USER || null,
+    pass: SMTP_PASS ? true : false,
+    ready: SMTP_ENABLED,
+  }
 }
 
 let transporter: Transporter | null = null

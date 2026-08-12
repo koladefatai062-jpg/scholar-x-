@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createServerSupabaseClient } from '@/lib/supabase-server'
-import { mailTemplate, sendBatchEmails, smtpConfigured } from '@/lib/mail'
+import { mailTemplate, sendBatchEmails, smtpConfigured, smtpStatus } from '@/lib/mail'
 
 const BATCH_SIZE = 50
 const CHUNK_DELAY_MS = 1100
@@ -39,7 +39,7 @@ export async function GET() {
     providers: {
       resend: Boolean(process.env.RESEND_API_KEY),
       smtp: smtpConfigured(),
-      smtpUser: process.env.SMTP_USER ? String(process.env.SMTP_USER).replace(/^(.).+@/, '$1***@') : null,
+      smtpStatus: smtpStatus(),
       from: process.env.APP_FROM || 'ScholarX <onboarding@resend.dev>',
     },
   })

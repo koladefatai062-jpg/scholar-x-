@@ -56,11 +56,18 @@ export default function LibraryPage() {
       if (level !== 'All') params.set('level', level)
       if (search) params.set('search', search)
       const res = await fetch(`/api/library?${params}`)
+      if (!res.ok) {
+        console.error('Library API error:', res.status)
+        setItems([])
+        setLoading(false)
+        return
+      }
       const data = await res.json()
       setItems(data.items || [])
       setIsPremium(data.is_premium || false)
     } catch (err) {
       console.error(err)
+      setItems([])
     }
     setLoading(false)
   }

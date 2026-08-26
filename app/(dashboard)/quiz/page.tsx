@@ -32,31 +32,35 @@ export default function QuizPage() {
   const startQuiz = async () => {
     setLoading(true)
 
-    // Premium questions are only served to premium members.
-    let isPremium = false
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: profile } = await supabase.from('users').select('is_premium').eq('id', user.id).maybeSingle()
-      isPremium = profile?.is_premium || false
-    }
-
     const { data, error } = await supabase
       .from('questions')
       .select('id, exam, subject, question_text, option_a, option_b, option_c, option_d, is_premium')
       .eq('exam', exam)
       .eq('subject', subject)
       .order('id')
-      .limit(count * 3)
 
-    const available = (data || []).filter(q => isPremium || !q.is_premium)
-
-    if (error || available.length === 0) {
+    if (error || !data || data.length === 0) {
       alert('No questions found for this selection yet. Try another subject.')
       setLoading(false)
       return
     }
 
-    const shuffled = [...available].sort(() => Math.random() - 0.5).slice(0, count)
+    const { data: { user } } = await supabase.auth.getUser()
+    let isPremium = false
+    if (user) {
+      const { data: profile } = await supabase.from('users').select('is_premium').eq('id', user.id).maybeSingle()
+      isPremium = profile?.is_premium || false
+    }
+
+    const available = data.filter(q => isPremium || !q.is_premium)
+
+    if (available.length === 0) {
+      alert('No free questions available for this selection. Upgrade to Premium for full access.')
+      setLoading(false)
+      return
+    }
+
+    const shuffled = [...available].sort(() => Math.random() - 0.5).slice(0, Math.min(count, available.length))
 
     const activeQuestions = shuffled.map(q => ({
       id: q.id,

@@ -13,11 +13,11 @@ const C = {
 
 const EXAMS = ['JAMB', 'WAEC', 'NECO', 'BECE', 'POST-UTME']
 const SUBJECTS: Record<string, string[]> = {
-  JAMB: ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Government', 'Literature'],
-  WAEC: ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Geography', 'Literature'],
-  NECO: ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Agricultural Science', 'Commerce', 'Civic Education'],
-  BECE: ['Mathematics', 'English Language', 'Basic Science', 'Social Studies', 'Basic Technology', 'Agricultural Science'],
-  'POST-UTME': ['Mathematics', 'English Language', 'Physics', 'Chemistry', 'Biology', 'Economics'],
+  JAMB: ['Mathematics', 'English', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Geography', 'Literature'],
+  WAEC: ['Mathematics', 'English', 'Physics', 'Chemistry', 'Biology', 'Economics', 'Geography', 'Literature'],
+  NECO: ['Mathematics', 'English', 'Physics', 'Chemistry', 'Biology', 'Geography', 'Economics'],
+  BECE: ['Mathematics', 'English', 'Basic Science', 'Geography'],
+  'POST-UTME': ['Mathematics', 'English', 'Physics', 'Chemistry', 'Biology', 'Economics'],
 }
 const COUNTS = [10, 20, 40]
 

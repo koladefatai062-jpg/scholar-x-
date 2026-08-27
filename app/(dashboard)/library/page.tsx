@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Search, BookOpen, Bookmark, Lock, ExternalLink, Filter } from 'lucide-react'
+import { createClient } from '@/lib/supabase'
 
 const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40',
@@ -26,6 +27,7 @@ interface LibraryItem {
 }
 
 export default function LibraryPage() {
+  const supabase = createClient()
   const [items, setItems] = useState<LibraryItem[]>([])
   const [savedIds, setSavedIds] = useState<string[]>([])
   const [isPremium, setIsPremium] = useState(false)
@@ -51,32 +53,38 @@ export default function LibraryPage() {
   const fetchItems = async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams()
-      if (subject !== 'All') params.set('subject', subject)
-      if (level !== 'All') params.set('level', level)
-      if (search) params.set('search', search)
-      const res = await fetch(`/api/library?${params}`)
-      if (!res.ok) {
-        console.error('Library API error:', res.status)
-        setItems([])
-        setLoading(false)
-        return
+      const { data: { user } } = await supabase.auth.getUser()
+      let premium = false
+      if (user) {
+        const { data: profile } = await supabase.from('users').select('is_premium').eq('id', user.id).maybeSingle()
+        premium = profile?.is_premium || false
       }
-      const data = await res.json()
-      setItems(data.items || [])
-      setIsPremium(data.is_premium || false)
+      setIsPremium(premium)
+
+      let query = supabase
+        .from('library_items')
+        .select('id, title, author, subject, level, description, file_url, cover_url, is_premium')
+        .order('created_at', { ascending: false })
+
+      if (!premium) query = query.eq('is_premium', false)
+      if (subject !== 'All') query = query.eq('subject', subject)
+      if (level !== 'All') query = query.eq('level', level)
+      if (search) query = query.ilike('title', `%${search}%`)
+
+      const { data, error } = await query
+      if (!error) setItems(data || [])
     } catch (err) {
       console.error(err)
-      setItems([])
     }
     setLoading(false)
   }
 
   const fetchSaved = async () => {
     try {
-      const res = await fetch('/api/library/save')
-      const data = await res.json()
-      setSavedIds(data.savedIds || [])
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase.from('saved_items').select('item_id').eq('user_id', user.id)
+      setSavedIds(data?.map(s => s.item_id) || [])
     } catch (err) {
       console.error('Failed to load saved items:', err)
     }
@@ -84,20 +92,15 @@ export default function LibraryPage() {
 
   const toggleSave = async (itemId: string, isPremiumItem: boolean) => {
     if (isPremiumItem && !isPremium) return
-    try {
-      const res = await fetch('/api/library/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item_id: itemId }),
-      })
-      const data = await res.json()
-      if (data.saved) {
-        setSavedIds(prev => [...prev, itemId])
-      } else {
-        setSavedIds(prev => prev.filter(id => id !== itemId))
-      }
-    } catch (err) {
-      console.error('Failed to toggle save:', err)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const isSaved = savedIds.includes(itemId)
+    if (isSaved) {
+      await supabase.from('saved_items').delete().eq('user_id', user.id).eq('item_id', itemId)
+      setSavedIds(prev => prev.filter(id => id !== itemId))
+    } else {
+      await supabase.from('saved_items').insert({ user_id: user.id, item_id: itemId })
+      setSavedIds(prev => [...prev, itemId])
     }
   }
 
@@ -199,7 +202,7 @@ export default function LibraryPage() {
                   )}
                 </div>
                 <div style={{ fontSize: isMobile ? 12 : 13, fontWeight: 700, color: C.white, marginBottom: 4, lineHeight: 1.4 }}>{item.title}</div>
-                {item.author && <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>{item.author}</div>}
+                <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>{item.author || item.description?.split('\n')[0]?.substring(0, 60) || item.subject}</div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
                   <span style={{ fontSize: 10, padding: '2px 7px', background: `${subjectColor}18`, borderRadius: 4, color: subjectColor, fontWeight: 600 }}>{item.subject}</span>
                   <span style={{ fontSize: 10, padding: '2px 7px', background: C.surface, borderRadius: 4, color: C.muted }}>{item.level}</span>
@@ -213,8 +216,10 @@ export default function LibraryPage() {
                       style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.cyan, fontWeight: 600, textDecoration: 'none' }}>
                       <ExternalLink size={13} />Open
                     </a>
+                  ) : item.description ? (
+                    <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>Read</span>
                   ) : (
-                    <span style={{ fontSize: 11, color: C.muted }}>No file yet</span>
+                    <span style={{ fontSize: 11, color: C.muted }}>No content</span>
                   )}
                   <button onClick={() => toggleSave(item.id, item.is_premium)} disabled={isLocked}
                     style={{ background: 'none', border: 'none', cursor: isLocked ? 'default' : 'pointer', color: isSaved ? C.gold : C.muted, padding: 4 }}>

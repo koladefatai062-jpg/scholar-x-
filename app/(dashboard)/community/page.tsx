@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Send, ThumbsUp, MessageCircle, Users, Plus, X, Lock, ChevronRight } from 'lucide-react'
+import { Send, ThumbsUp, MessageCircle, Users, Plus, X, Lock, ChevronRight, Crown, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Avatar from '@/components/Avatar'
@@ -220,7 +220,7 @@ export default function CommunityPage() {
               style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 9, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
-              <button onClick={createPost} disabled={!postInput.trim() || posting} style={{ background: postInput.trim() ? `linear-gradient(135deg,${C.accent},#5B21B6)` : C.border, border: 'none', color: '#fff', padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: postInput.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={createPost} disabled={!postInput.trim() || posting} style={{ background: postInput.trim() ? C.accent : C.border, border: 'none', color: '#fff', padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: postInput.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Send size={14} />{posting ? 'Posting...' : 'Post'}
               </button>
             </div>
@@ -243,7 +243,7 @@ export default function CommunityPage() {
                     <div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 14, fontWeight: 700, color: C.white }}>{post.users?.full_name || 'Student'}</span>
-                        {post.users?.is_premium && <span style={{ fontSize: 10, padding: '2px 6px', background: `${C.accent}22`, borderRadius: 4, color: C.accent, fontWeight: 700 }}>⚡ PRO</span>}
+                        {post.users?.is_premium && <span style={{ fontSize: 10, padding: '2px 6px', background: `${C.accent}22`, borderRadius: 4, color: C.accent, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Crown size={10} /> PRO</span>}
                         {post.subject && <span style={{ fontSize: 11, padding: '2px 7px', background: C.surface, borderRadius: 4, color: C.muted }}>{post.subject}</span>}
                         <span style={{ fontSize: 12, color: C.muted }}>{timeAgo(post.created_at)}</span>
                       </div>
@@ -269,10 +269,10 @@ export default function CommunityPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div style={{ fontSize: 13, color: C.muted }}>
               {!isPremium && <span>Joined <strong style={{ color: C.text }}>{membershipCount}/3</strong> groups · <span style={{ color: C.accent }}>Upgrade for unlimited</span></span>}
-              {isPremium && <span style={{ color: C.accent }}>⚡ Premium · Unlimited groups</span>}
+              {isPremium && <span style={{ color: C.accent, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Crown size={13} /> Premium · Unlimited groups</span>}
             </div>
             {isPremium && (
-              <button onClick={() => setShowCreateGroup(true)} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={() => setShowCreateGroup(true)} style={{ background: C.accent, border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Plus size={14} />Create group
               </button>
             )}
@@ -293,8 +293,8 @@ export default function CommunityPage() {
                       placeholder={ph} style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                 ))}
-                <p style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>⚠️ Group will be reviewed by admin before going live.</p>
-                <button onClick={createGroup} style={{ width: '100%', background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '12px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                <p style={{ fontSize: 12, color: C.muted, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}><AlertTriangle size={13} /> Group will be reviewed by admin before going live.</p>
+                <button onClick={createGroup} style={{ width: '100%', background: C.accent, border: 'none', color: '#fff', padding: '12px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                   Submit for approval
                 </button>
               </div>
@@ -328,7 +328,7 @@ export default function CommunityPage() {
                     {group.is_joined ? 'Leave group' : !isPremium && membershipCount >= 3 ? '🔒 Upgrade to join' : 'Join group'}
                   </button>
                   {group.is_joined && (
-                    <button onClick={() => router.push(`/community/group/${group.id}`)} style={{ width: '100%', padding: '9px', borderRadius: 8, border: 'none', background: `linear-gradient(135deg,${C.accent},#5B21B6)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <button onClick={() => router.push(`/community/group/${group.id}`)} style={{ width: '100%', padding: '9px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                       Open chat <ChevronRight size={14} />
                     </button>
                   )}

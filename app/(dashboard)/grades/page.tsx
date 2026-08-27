@@ -152,7 +152,7 @@ export default function GradesPage() {
           <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: C.white, marginBottom: 4 }}>Grade Tracker</h2>
           <p style={{ color: C.muted, fontSize: 14 }}>{type === 'university' ? 'Track your CGPA and course results' : 'Track your term results'}</p>
         </div>
-        <button onClick={() => setShowForm(true)} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '10px 18px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
+        <button onClick={() => setShowForm(true)} style={{ background: C.accent, border: 'none', color: '#fff', padding: '10px 18px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
           <Plus size={15} />{type === 'university' ? 'Add course' : 'Add result'}
         </button>
       </div>
@@ -306,7 +306,7 @@ export default function GradesPage() {
                       placeholder="2025/2026" style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                 </div>
-                <button onClick={addCourse} disabled={submitting} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 4 }}>
+                <button onClick={addCourse} disabled={submitting} style={{ background: C.accent, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 4 }}>
                   {submitting ? 'Adding...' : 'Add course'}
                 </button>
               </div>
@@ -336,7 +336,7 @@ export default function GradesPage() {
                       placeholder="2025/2026" style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 9, padding: '11px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                 </div>
-                <button onClick={addResult} disabled={submitting} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 4 }}>
+                <button onClick={addResult} disabled={submitting} style={{ background: C.accent, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 4 }}>
                   {submitting ? 'Adding...' : 'Add result'}
                 </button>
               </div>

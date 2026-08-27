@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trophy, Eye, Check, X, Sparkles } from 'lucide-react'
+import { Trophy, Eye, Check, X, Flame, Award, Crown, Brain } from 'lucide-react'
 import { badgeInfo } from '@/lib/gamification'
 
 interface ReviewItem {
@@ -110,14 +110,14 @@ export default function QuizResultPage() {
               <div style={{ fontSize: 11, color: '#7B6FA0' }}>Total {gamification.xp} · Level {gamification.level}</div>
             </div>
             <div style={{ background: '#150D40', border: '1px solid #1E1450', borderRadius: 10, padding: '10px 18px', textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#F59E0B' }}>🔥 {gamification.streak}d</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: 6 }}><Flame size={18} /> {gamification.streak}d</div>
               <div style={{ fontSize: 11, color: '#7B6FA0' }}>Streak</div>
             </div>
           </div>
         )}
         {newBadges.length > 0 && (
           <div style={{ background: '#7C3AED18', border: '1px solid #7C3AED44', borderRadius: 12, padding: '14px 20px', marginBottom: 24, maxWidth: 420 }}>
-            <div style={{ fontSize: 12, color: '#A78BFA', fontWeight: 700, marginBottom: 10, textAlign: 'center' }}>🎉 NEW BADGE{newBadges.length > 1 ? 'S' : ''} EARNED</div>
+            <div style={{ fontSize: 12, color: '#A78BFA', fontWeight: 700, marginBottom: 10, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Award size={14} /> NEW BADGE{newBadges.length > 1 ? 'S' : ''} EARNED</div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
               {newBadges.map(b => (
                 <div key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#150D40', border: '1px solid #7C3AED44', borderRadius: 10, padding: '8px 14px' }}>
@@ -153,14 +153,14 @@ export default function QuizResultPage() {
                   display: 'flex', alignItems: 'center', gap: 7,
                 }}
               >
-                <Sparkles size={15} />{explainLoading ? 'Explaining...' : aiExplanations ? 'Regenerate explanations' : 'Explain with AI'}
+                <Brain size={15} />{explainLoading ? 'Explaining...' : aiExplanations ? 'Regenerate explanations' : 'Explain with AI'}
               </button>
             </>
           )}
           <button
             onClick={retry}
             style={{
-              background: 'linear-gradient(135deg,#7C3AED,#5B21B6)', border: 'none', color: '#fff',
+              background: '#7C3AED', border: 'none', color: '#fff',
               padding: '12px 24px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer',
             }}
           >
@@ -187,7 +187,7 @@ export default function QuizResultPage() {
       {aiExplanations && (
         <div style={{ background: '#110836', border: '1px solid #06B6D433', borderRadius: 14, padding: 18, marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <Sparkles size={16} color="#06B6D4" />
+            <Brain size={16} color="#06B6D4" />
             <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>AI Explanations</span>
           </div>
           <div style={{ fontSize: 12, color: '#7B6FA0', marginBottom: 4 }}>
@@ -198,7 +198,7 @@ export default function QuizResultPage() {
           {!isPremium && (
             <button onClick={() => router.push('/settings')}
               style={{ background: 'none', border: 'none', color: '#F59E0B', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, marginBottom: 8 }}>
-              Upgrade to Premium ⚡
+              Upgrade to Premium
             </button>
           )}
         </div>
@@ -236,7 +236,7 @@ export default function QuizResultPage() {
               {aiExplanations && aiExplanations[i] && (
                 <div style={{ marginTop: 10, background: '#7C3AED18', border: '1px solid #7C3AED33', borderRadius: 8, padding: 12 }}>
                   <div style={{ fontSize: 11, color: '#A78BFA', fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <Sparkles size={12} />AI EXPLANATION {!isPremium && <span style={{ fontWeight: 500, color: '#7B6FA0' }}>(brief — upgrade for deep breakdown)</span>}
+                    <Brain size={12} />AI EXPLANATION {!isPremium && <span style={{ fontWeight: 500, color: '#7B6FA0' }}>(brief — upgrade for deep breakdown)</span>}
                   </div>
                   <p style={{ fontSize: 13, color: '#E2D9F3', lineHeight: 1.6, margin: 0 }}>{aiExplanations[i]}</p>
                 </div>

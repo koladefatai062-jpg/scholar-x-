@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, X, HelpCircle, Camera, Sparkles } from 'lucide-react'
+import { Plus, Trash2, X, HelpCircle, Camera, Scan } from 'lucide-react'
 
 const C = { bg:'#0A0628',surface:'#110836',card:'#150D40',border:'#1E1450',accent:'#7C3AED',cyan:'#06B6D4',text:'#E2D9F3',muted:'#7B6FA0',white:'#FFFFFF',gold:'#F59E0B',green:'#22C55E',red:'#EF4444' }
 const EXAMS = ['JAMB', 'WAEC', 'NECO', 'BECE', 'POST-UTME']
@@ -125,7 +125,7 @@ export default function AdminQuestionsPage() {
             <option value="">All exams</option>
             {EXAMS.map(e => <option key={e} value={e}>{e}</option>)}
           </select>
-          <button onClick={() => setShowForm(true)} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => setShowForm(true)} style={{ background: C.accent, border: 'none', color: '#fff', padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Plus size={14} />Add question
           </button>
         </div>
@@ -192,7 +192,7 @@ export default function AdminQuestionsPage() {
                       onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }} />
                     {ocrLoading ? (
                       <>
-                        <Sparkles size={22} color={C.gold} />
+                        <Scan size={22} color={C.gold} />
                         <span style={{ fontSize: 13, color: C.text }}>Reading question with AI...</span>
                       </>
                     ) : ocrImage ? (
@@ -281,7 +281,7 @@ export default function AdminQuestionsPage() {
                     style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }} />
                 </div>
 
-                <button onClick={submitSingle} disabled={submitting} style={{ width: '100%', background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                <button onClick={submitSingle} disabled={submitting} style={{ width: '100%', background: C.accent, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                   {submitting ? 'Adding...' : 'Add question'}
                 </button>
               </>

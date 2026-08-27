@@ -243,7 +243,7 @@ export default function ActiveQuizPage() {
           onClick={next}
           disabled={loading}
           style={{
-            width: '100%', background: 'linear-gradient(135deg,#7C3AED,#5B21B6)',
+            width: '100%', background: '#7C3AED',
             border: 'none', color: '#fff', padding: 13, borderRadius: 10,
             fontSize: 15, fontWeight: 700, cursor: 'pointer',
           }}

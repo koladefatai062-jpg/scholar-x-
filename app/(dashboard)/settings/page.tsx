@@ -258,7 +258,7 @@ export default function SettingsPage() {
             </div>
             <div style={{ fontSize: 13, color: C.muted }}>{user?.email}</div>
             <div style={{ fontSize: 12, color: user?.is_premium ? C.accent : C.muted, marginTop: 2 }}>
-              {user?.is_premium ? '⚡ Premium member' : 'Free plan'} · {user?.streak || 0} day streak 🔥
+              {user?.is_premium ? 'Premium member' : 'Free plan'} · {user?.streak || 0} day streak
             </div>
           </div>
         </div>
@@ -285,7 +285,7 @@ export default function SettingsPage() {
         </div>
 
         <button onClick={saveProfile} disabled={saving}
-          style={{ background: saving ? C.border : `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '11px 22px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: saving ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
+          style={{ background: saving ? C.border : C.accent, border: 'none', color: '#fff', padding: '11px 22px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: saving ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}>
           {saved ? <><Check size={15} />Saved!</> : saving ? 'Saving...' : 'Save changes'}
         </button>
       </div>
@@ -320,7 +320,7 @@ export default function SettingsPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: C.white, marginBottom: 4 }}>
-              {user?.is_premium ? '⚡ Premium' : 'Free plan'}
+              {user?.is_premium ? 'Premium' : 'Free plan'}
             </div>
             <div style={{ fontSize: 13, color: C.muted }}>
               {user?.is_premium
@@ -334,7 +334,7 @@ export default function SettingsPage() {
             <button
               onClick={handleUpgrade}
               disabled={upgrading}
-              style={{ background: upgrading ? C.border : `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '11px 22px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: upgrading ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap' }}>
+              style={{ background: upgrading ? C.border : C.accent, border: 'none', color: '#fff', padding: '11px 22px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: upgrading ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap' }}>
               <Zap size={15} />
               {upgrading ? 'Loading...' : 'Upgrade — ₦5,000/yr'}
             </button>
@@ -380,7 +380,7 @@ export default function SettingsPage() {
             </div>
           </div>
           <button onClick={togglePush} disabled={pushBusy}
-            style={{ width: 44, height: 24, borderRadius: 12, background: pushNotifs ? `linear-gradient(135deg,${C.accent},#5B21B6)` : C.border, border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', opacity: pushBusy ? 0.6 : 1 }}>
+            style={{ width: 44, height: 24, borderRadius: 12, background: pushNotifs ? C.accent : C.border, border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', opacity: pushBusy ? 0.6 : 1 }}>
             <div style={{ position: 'absolute', top: 3, left: pushNotifs ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
           </button>
         </div>
@@ -390,7 +390,7 @@ export default function SettingsPage() {
             <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>News and study tips</div>
           </div>
           <button onClick={() => setEmailNotifs(v => !v)}
-            style={{ width: 44, height: 24, borderRadius: 12, background: emailNotifs ? `linear-gradient(135deg,${C.accent},#5B21B6)` : C.border, border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
+            style={{ width: 44, height: 24, borderRadius: 12, background: emailNotifs ? C.accent : C.border, border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
             <div style={{ position: 'absolute', top: 3, left: emailNotifs ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
           </button>
         </div>
@@ -421,7 +421,7 @@ export default function SettingsPage() {
             {passwordError && <p style={{ fontSize: 12, color: C.red, marginBottom: 10 }}>{passwordError}</p>}
             {passwordSaved && <p style={{ fontSize: 12, color: C.green, marginBottom: 10 }}>Password changed successfully!</p>}
             <button onClick={changePassword}
-              style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ background: C.accent, border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
               Update password
             </button>
           </div>

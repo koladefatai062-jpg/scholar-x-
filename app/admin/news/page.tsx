@@ -68,7 +68,7 @@ export default function AdminNewsPage() {
           <button onClick={runScraper} disabled={scraping} style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.text, padding: '9px 16px', borderRadius: 8, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <RefreshCw size={14} />{scraping ? 'Scraping...' : 'Run scraper'}
           </button>
-          <button onClick={() => setShowForm(true)} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => setShowForm(true)} style={{ background: C.accent, border: 'none', color: '#fff', padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Plus size={14} />Add news
           </button>
         </div>
@@ -125,7 +125,7 @@ export default function AdminNewsPage() {
                   style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
               </div>
             </div>
-            <button onClick={submit} disabled={submitting} style={{ width: '100%', background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={submit} disabled={submitting} style={{ width: '100%', background: C.accent, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
               {submitting ? 'Adding...' : 'Add news'}
             </button>
           </div>

@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
             <p style={{ color: C.muted, fontSize: 14, marginBottom: 8 }}>If an account exists for <b style={{ color: C.text }}>{email}</b>, we sent a reset code to it.</p>
             <p style={{ color: C.muted, fontSize: 13, marginBottom: 28 }}>The code expires in 15 minutes.</p>
             <button onClick={() => router.push(`/reset-password?email=${encodeURIComponent(email)}`)}
-              style={{ width: '100%', background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ width: '100%', background: C.accent, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
               I have a code — continue
             </button>
           </div>
@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
                   style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 9, padding: '12px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <button onClick={handleSend} disabled={loading}
-                style={{ background: loading ? C.border : `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer' }}>
+                style={{ background: loading ? C.border : C.accent, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer' }}>
                 {loading ? 'Sending...' : 'Send reset code'}
               </button>
             </div>

@@ -128,7 +128,7 @@ export default function LibraryPage() {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search books and materials..."
             style={{ background: 'none', border: 'none', color: C.text, fontSize: 14, outline: 'none', flex: 1 }} />
         </div>
-        <button type="submit" style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '10px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+        <button type="submit" style={{ background: C.accent, border: 'none', color: '#fff', padding: '10px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
           Search
         </button>
         {isMobile && (
@@ -165,7 +165,7 @@ export default function LibraryPage() {
             <Lock size={15} color={C.accent} />
             <span style={{ fontSize: 13, color: C.text }}>Upgrade to access all premium materials</span>
           </div>
-          <button style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '7px 16px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+          <button style={{ background: C.accent, border: 'none', color: '#fff', padding: '7px 16px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
             Upgrade ₦5k/yr
           </button>
         </div>

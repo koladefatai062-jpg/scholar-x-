@@ -46,7 +46,7 @@ export default function AdminLibraryPage() {
           <h2 style={{ fontSize: 22, fontWeight: 800, color: C.white, marginBottom: 4 }}>Library</h2>
           <p style={{ color: C.muted, fontSize: 14 }}>{items.length} items</p>
         </div>
-        <button onClick={() => setShowForm(true)} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button onClick={() => setShowForm(true)} style={{ background: C.accent, border: 'none', color: '#fff', padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
           <Plus size={14} />Add item
         </button>
       </div>
@@ -107,7 +107,7 @@ export default function AdminLibraryPage() {
               <input type="checkbox" checked={form.is_premium} onChange={e => setForm(p => ({ ...p, is_premium: e.target.checked }))} />
               <span style={{ fontSize: 14, color: C.text }}>Premium only</span>
             </label>
-            <button onClick={submit} disabled={submitting} style={{ width: '100%', background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={submit} disabled={submitting} style={{ width: '100%', background: C.accent, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
               {submitting ? 'Adding...' : 'Add item'}
             </button>
           </div>

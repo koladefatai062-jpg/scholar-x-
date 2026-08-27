@@ -58,7 +58,7 @@ export default function LandingPage() {
             <Logo size={32} text="ScholarX" />
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <button onClick={goSignup} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 700 }}>
+            <button onClick={goSignup} style={{ background: C.accent, border: 'none', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 700 }}>
               Get started
             </button>
           </div>
@@ -85,7 +85,7 @@ export default function LandingPage() {
         </p>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
-          <button onClick={goSignup} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '14px 30px', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={goSignup} style={{ background: C.accent, border: 'none', color: '#fff', padding: '14px 30px', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             Get started free <ArrowRight size={16} />
           </button>
           <button onClick={() => router.push('/features')} style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.text, padding: '13px 24px', borderRadius: 10, fontSize: 15, cursor: 'pointer', fontWeight: 600 }}>
@@ -111,7 +111,7 @@ export default function LandingPage() {
               <h3 style={{ fontSize: 22, fontWeight: 800, color: C.white, marginBottom: 6 }}>{activeExam}</h3>
               <p style={{ color: C.muted, fontSize: 14, maxWidth: 480 }}>{examData[activeExam].desc}</p>
             </div>
-            <button onClick={goSignup} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 9, fontSize: 14, cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+            <button onClick={goSignup} style={{ background: C.accent, border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 9, fontSize: 14, cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
               Get started <ArrowRight size={14} />
             </button>
           </div>
@@ -180,7 +180,7 @@ export default function LandingPage() {
                 <span style={{ fontSize: 13, color: C.text }}>{f}</span>
               </div>
             ))}
-            <button onClick={goSignup} style={{ marginTop: 20, width: '100%', padding: '11px', borderRadius: 9, border: 'none', background: `linear-gradient(135deg,${C.accent},#5B21B6)`, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={goSignup} style={{ marginTop: 20, width: '100%', padding: '11px', borderRadius: 9, border: 'none', background: C.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}><Crown size={14} /> Get Premium — ₦5,000/yr</span>
             </button>
           </div>
@@ -214,7 +214,7 @@ export default function LandingPage() {
             })}
           </div>
           <div style={{ textAlign: 'center', marginTop: 36 }}>
-            <button onClick={goSignup} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px 28px', borderRadius: 10, fontSize: 15, cursor: 'pointer', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={goSignup} style={{ background: C.accent, border: 'none', color: '#fff', padding: '13px 28px', borderRadius: 10, fontSize: 15, cursor: 'pointer', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               Get started <ArrowRight size={16} />
             </button>
           </div>

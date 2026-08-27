@@ -67,7 +67,7 @@ export default function AdminWaitlistPage() {
           </div>
           <a
             href="/api/waitlist/export"
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 9, background: `linear-gradient(135deg,${C.accent},#5B21B6)`, color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 9, background: C.accent, color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', cursor: 'pointer' }}
           >
             <Download size={14} /> Export CSV
           </a>

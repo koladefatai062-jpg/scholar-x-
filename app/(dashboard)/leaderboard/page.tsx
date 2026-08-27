@@ -72,7 +72,7 @@ export default function LeaderboardPage() {
   return (
     <div style={{ padding: '24px 28px', maxWidth: 760 }}>
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 24, fontWeight: 800, color: C.white, marginBottom: 4 }}>Leaderboard 🏆</h2>
+        <h2 style={{ fontSize: 24, fontWeight: 800, color: C.white, marginBottom: 4 }}>Leaderboard</h2>
         <p style={{ color: C.muted, fontSize: 14 }}>Top students by XP. Answer quiz questions correctly to climb the ranks.</p>
       </div>
 
@@ -104,11 +104,11 @@ export default function LeaderboardPage() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: C.white, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {e.full_name || 'Student'}
-                  {e.is_premium && <span style={{ fontSize: 10, padding: '2px 6px', background: `${C.accent}22`, borderRadius: 4, color: C.accent, fontWeight: 700 }}>⚡ PRO</span>}
+                  {e.is_premium && <span style={{ fontSize: 10, padding: '2px 6px', background: `${C.accent}22`, borderRadius: 4, color: C.accent, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Crown size={10} /> PRO</span>}
                   {isMe && <span style={{ fontSize: 10, padding: '2px 6px', background: `${C.green}22`, borderRadius: 4, color: C.green, fontWeight: 700 }}>YOU</span>}
                 </div>
                 <div style={{ fontSize: 12, color: C.muted }}>
-                  Level {e.game_level} {e.streak > 0 && <span style={{ color: C.gold }}>· 🔥 {e.streak}d</span>}
+                  Level {e.game_level} {e.streak > 0 && <span style={{ color: C.gold, display: 'inline-flex', alignItems: 'center', gap: 3 }}>· <Flame size={11} /> {e.streak}d</span>}
                   {e.badges?.length > 0 && <span style={{ color: C.muted }}> · {e.badges.slice(0, 3).map(b => badgeInfo(b).emoji).join('')}</span>}
                 </div>
               </div>

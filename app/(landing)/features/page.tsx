@@ -143,7 +143,7 @@ export default function FeaturesPage() {
             <button onClick={() => router.push('/')} style={{ background: 'none', border: `1px solid ${C.border}`, color: C.text, padding: '7px 14px', borderRadius: 8, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               <ArrowLeft size={14} /> Home
             </button>
-            <button onClick={() => router.push('/signup')} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 700 }}>
+            <button onClick={() => router.push('/signup')} style={{ background: C.accent, border: 'none', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 700 }}>
               Get started
             </button>
           </div>
@@ -225,7 +225,7 @@ export default function FeaturesPage() {
                   <span style={{ fontSize: 13, color: C.text }}>{f}</span>
                 </div>
               ))}
-              <button onClick={() => router.push('/signup')} style={{ marginTop: 22, width: '100%', padding: '11px', borderRadius: 9, border: 'none', background: `linear-gradient(135deg,${C.accent},#5B21B6)`, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Upgrade — ₦5,000/yr</button>
+              <button onClick={() => router.push('/signup')} style={{ marginTop: 22, width: '100%', padding: '11px', borderRadius: 9, border: 'none', background: C.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Upgrade — ₦5,000/yr</button>
             </div>
           </div>
 
@@ -249,7 +249,7 @@ export default function FeaturesPage() {
         <p style={{ color: C.muted, fontSize: 15, marginBottom: 28 }}>
           Join thousands of Nigerian students already using ScholarX. Free forever, upgrade when you're ready.
         </p>
-        <button onClick={() => router.push('/signup')} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '14px 32px', borderRadius: 10, fontSize: 16, cursor: 'pointer', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <button onClick={() => router.push('/signup')} style={{ background: C.accent, border: 'none', color: '#fff', padding: '14px 32px', borderRadius: 10, fontSize: 16, cursor: 'pointer', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           Start for free <ArrowRight size={17} />
         </button>
       </section>

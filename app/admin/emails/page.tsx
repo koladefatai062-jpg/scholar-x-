@@ -108,7 +108,7 @@ export default function AdminEmailsPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
         <div>
           <label style={{ fontSize: 12, color: C.muted, display: 'block', marginBottom: 6, fontWeight: 600 }}>Subject</label>
-          <input value={subject} onChange={e => setSubject(e.target.value)} maxLength={200} placeholder="e.g. Big news from ScholarX 🎉"
+          <input value={subject} onChange={e => setSubject(e.target.value)} maxLength={200} placeholder="e.g. Big news from ScholarX"
             style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 9, padding: '12px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
         </div>
         <div>
@@ -138,7 +138,7 @@ export default function AdminEmailsPage() {
 
       <div style={{ display: 'flex', gap: 10 }}>
         <button onClick={() => setConfirming(true)} disabled={sending || !subject.trim() || !message.trim() || recipientCount === 0}
-          style={{ flex: 1, background: sending || !subject.trim() || !message.trim() || recipientCount === 0 ? C.border : `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: sending || !subject.trim() || !message.trim() || recipientCount === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          style={{ flex: 1, background: sending || !subject.trim() || !message.trim() || recipientCount === 0 ? C.border : C.accent, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: sending || !subject.trim() || !message.trim() || recipientCount === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           {sending ? <><Loader2 size={16} className="animate-spin" /> Sending...</> : <><Send size={16} /> Send to {recipientCount} recipients</>}
         </button>
       </div>

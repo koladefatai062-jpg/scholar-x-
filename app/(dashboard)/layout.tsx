@@ -250,7 +250,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {user?.full_name || 'Student'}
                   </div>
                   <div style={{ fontSize: 11, color: user?.is_premium ? C.accent : C.muted }}>
-                    {user?.is_premium ? '⚡ Premium' : 'Free plan'}
+                    {user?.is_premium ? 'Premium' : 'Free plan'}
                   </div>
                 </div>
               </div>

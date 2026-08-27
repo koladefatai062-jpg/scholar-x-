@@ -591,11 +591,11 @@ export default function GroupChatPage() {
                   {msg.reply.user_id === currentUserId ? 'You' : (msg.reply.users?.full_name || 'Member')}
                 </div>
                 <div style={{ color: isOwn ? 'rgba(255,255,255,0.6)' : C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {msg.reply.file_type === 'image' ? '📷 Image' : msg.reply.file_type === 'pdf' ? `📄 ${msg.reply.file_name}` : msg.reply.file_type === 'audio' ? '🎵 Voice note' : msg.reply.content}
+                  {msg.reply.file_type === 'image' ? 'Image' : msg.reply.file_type === 'pdf' ? msg.reply.file_name : msg.reply.file_type === 'audio' ? 'Voice note' : msg.reply.content}
                 </div>
               </div>
             )}
-            <div style={{ background: isOwn ? `linear-gradient(135deg,${C.accent},#5B21B6)` : C.card, border: isOwn ? 'none' : `1px solid ${C.border}`, borderRadius: isOwn ? '14px 14px 4px 14px' : '14px 14px 14px 4px', padding: '10px 14px' }}>
+            <div style={{ background: isOwn ? C.accent : C.card, border: isOwn ? 'none' : `1px solid ${C.border}`, borderRadius: isOwn ? '14px 14px 4px 14px' : '14px 14px 14px 4px', padding: '10px 14px' }}>
               {isDeleted ? (
                 <p style={{ fontSize: 13, color: isOwn ? 'rgba(255,255,255,0.55)' : C.muted, fontStyle: 'italic', margin: 0 }}>This message was deleted</p>
               ) : (
@@ -717,7 +717,7 @@ export default function GroupChatPage() {
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: C.muted }}>
             <Users size={36} color={C.border} style={{ marginBottom: 10 }} />
-            <p style={{ fontSize: 14 }}>No messages yet. Say hello! 👋</p>
+            <p style={{ fontSize: 14 }}>No messages yet. Say hello!</p>
           </div>
         )}
         {messages.map(msg => renderBubble(msg))}
@@ -743,11 +743,11 @@ export default function GroupChatPage() {
       {(replyTo || editing) && (
         <div style={{ margin: '0 16px 8px', background: C.card, border: `1px solid ${C.accent}44`, borderLeft: `3px solid ${C.accent}`, borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {editing ? (
-            <div style={{ flex: 1, fontSize: 12, color: C.muted }}>✏️ Editing message</div>
+            <div style={{ flex: 1, fontSize: 12, color: C.muted }}>Editing message</div>
           ) : replyTo && (
             <div style={{ flex: 1, fontSize: 12, color: C.muted, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
               <span style={{ color: C.accent, fontWeight: 700 }}>Replying to {replyTo.user_id === currentUserId ? 'you' : (replyTo.users?.full_name || 'member')}: </span>
-              {replyTo.file_type === 'image' ? '📷 Image' : replyTo.file_type === 'pdf' ? `📄 ${replyTo.file_name}` : replyTo.content}
+              {replyTo.file_type === 'image' ? 'Image' : replyTo.file_type === 'pdf' ? replyTo.file_name : replyTo.content}
             </div>
           )}
           <button onClick={() => { setReplyTo(null); setEditing(null) }} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer' }}><X size={15} /></button>
@@ -791,12 +791,12 @@ export default function GroupChatPage() {
               style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', resize: 'none', fontFamily: 'inherit', lineHeight: 1.5 }} />
             {input.trim() ? (
               <button onClick={sendMessage} disabled={sending}
-                style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', width: 40, height: 40, borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                style={{ background: C.accent, border: 'none', color: '#fff', width: 40, height: 40, borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Send size={16} />
               </button>
             ) : (
               <button onClick={startRecording}
-                style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', width: 40, height: 40, borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                style={{ background: C.accent, border: 'none', color: '#fff', width: 40, height: 40, borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Mic size={16} />
               </button>
             )}
@@ -839,7 +839,7 @@ export default function GroupChatPage() {
                   <input key={key} value={groupForm[key as 'name' | 'subject' | 'description']} onChange={e => setGroupForm(prev => ({ ...prev, [key]: e.target.value }))}
                     placeholder={label} style={{ width: '100%', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 12px', color: C.text, fontSize: 13, outline: 'none', marginBottom: 8, boxSizing: 'border-box' }} />
                 ))}
-                <button onClick={updateGroup} disabled={savingGroup} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                <button onClick={updateGroup} disabled={savingGroup} style={{ background: C.accent, border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                   {savingGroup ? 'Saving...' : 'Save changes'}
                 </button>
               </div>

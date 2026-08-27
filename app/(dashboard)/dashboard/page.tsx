@@ -89,7 +89,7 @@ export default function DashboardPage() {
       {/* GREETING */}
       <div style={{ marginBottom: 28 }}>
         <h2 style={{ fontSize: 24, fontWeight: 800, color: C.white, marginBottom: 4 }}>
-          {getGreeting()}, {user?.full_name?.split(' ')[0] || 'Student'} 👋
+          {getGreeting()}, {user?.full_name?.split(' ')[0] || 'Student'}
         </h2>
         <p style={{ color: C.muted, fontSize: 14 }}>
           {user?.streak ? `You're on a ${user.streak}-day streak. Keep it going.` : 'Welcome to ScholarX. Start your first quiz today.'}
@@ -171,7 +171,7 @@ export default function DashboardPage() {
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
               <Target size={28} color={C.border} style={{ margin: '0 auto 10px' }} />
               <p style={{ fontSize: 13, color: C.muted }}>No quizzes yet. Start one now.</p>
-              <button onClick={() => router.push('/quiz')} style={{ marginTop: 12, background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Start quiz</button>
+              <button onClick={() => router.push('/quiz')} style={{ marginTop: 12, background: C.accent, border: 'none', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Start quiz</button>
             </div>
           ) : attempts.map((a, i) => (
             <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 0', borderBottom: i < attempts.length - 1 ? `1px solid ${C.border}` : 'none' }}>
@@ -234,7 +234,7 @@ export default function DashboardPage() {
                     <span style={{ fontSize: 13, fontWeight: 700, color: C.cyan }}>{o.amount || 'See details'}</span>
                     {o.apply_url && (
                       <a href={o.apply_url} target="_blank" rel="noopener noreferrer"
-                        style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, color: '#fff', padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, textDecoration: 'none' }}>
+                        style={{ background: C.accent, color: '#fff', padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, textDecoration: 'none' }}>
                         Apply
                       </a>
                     )}
@@ -257,7 +257,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <button onClick={() => router.push('/ai-tutor')}
-            style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+            style={{ background: C.accent, border: 'none', color: '#fff', padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
             Ask AI Tutor <ArrowRight size={14} />
           </button>
         </div>

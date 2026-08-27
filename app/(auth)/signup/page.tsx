@@ -117,7 +117,7 @@ export default function SignupPage() {
                   </button>
                 </div>
               </div>
-              <button onClick={handleStep1} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 4 }}>
+              <button onClick={handleStep1} style={{ background: C.accent, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 4 }}>
                 Continue
               </button>
             </div>
@@ -159,7 +159,7 @@ export default function SignupPage() {
             )}
 
             <button onClick={handleStep2} disabled={!level || loading}
-              style={{ width: '100%', background: level && !loading ? `linear-gradient(135deg,${C.accent},#5B21B6)` : C.border, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: level && !loading ? 'pointer' : 'default', opacity: level ? 1 : 0.5 }}>
+              style={{ width: '100%', background: level && !loading ? C.accent : C.border, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: level && !loading ? 'pointer' : 'default', opacity: level ? 1 : 0.5 }}>
               {loading ? 'Creating account...' : 'Create account'}
             </button>
           </>

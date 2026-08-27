@@ -80,7 +80,7 @@ function ResetPasswordPageInner() {
             </div>
             <h2 style={{ fontSize: 26, fontWeight: 800, color: C.white, marginBottom: 8 }}>Password updated!</h2>
             <p style={{ color: C.muted, fontSize: 14, marginBottom: 32 }}>You can now log in with your new password.</p>
-            <button onClick={() => router.push('/login')} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px 32px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={() => router.push('/login')} style={{ background: C.accent, border: 'none', color: '#fff', padding: '13px 32px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
               Go to login
             </button>
           </div>
@@ -115,7 +115,7 @@ function ResetPasswordPageInner() {
                   style={{ width: '100%', background: C.card, border: `1px solid ${C.border}`, borderRadius: 9, padding: '12px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <button onClick={handleReset} disabled={loading}
-                style={{ background: loading ? C.border : `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer' }}>
+                style={{ background: loading ? C.border : C.accent, border: 'none', color: '#fff', padding: '13px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer' }}>
                 {loading ? 'Resetting...' : 'Reset password'}
               </button>
             </div>

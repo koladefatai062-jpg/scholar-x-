@@ -303,7 +303,7 @@ export default function AITutorPage() {
           onClick={newChat}
           style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            background: 'linear-gradient(135deg,#7C3AED,#5B21B6)', border: 'none', color: '#fff',
+            background: '#7C3AED', border: 'none', color: '#fff',
             padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
           }}>
           <Plus size={16} /> New chat
@@ -425,7 +425,7 @@ export default function AITutorPage() {
                 <Brain size={26} color="#fff" />
               </div>
               <div style={{ textAlign: 'center' }}>
-                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Hey! I'm Scholar 👋</h3>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Hey! I'm Scholar</h3>
                 <p style={{ fontSize: 14, color: '#7B6FA0', maxWidth: 420, lineHeight: 1.6 }}>
                   Your personal AI tutor. Ask me anything — maths, science, essays, JAMB prep. Upload a photo or PDF and I'll read it for you, or ask me to draw/generate an image.
                 </p>
@@ -461,12 +461,12 @@ export default function AITutorPage() {
                   )}
                   <div style={{
                     maxWidth: '72%',
-                    background: msg.role === 'user' ? 'linear-gradient(135deg,#7C3AED,#5B21B6)' : '#150D40',
+                    background: msg.role === 'user' ? '#7C3AED' : '#150D40',
                     border: msg.role === 'user' ? 'none' : '1px solid #1E1450',
                     borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                     padding: '12px 16px',
                     minWidth: 0,
-                    boxShadow: msg.role === 'user' ? '0 4px 14px rgba(124,58,237,0.25)' : 'none',
+                    boxShadow: msg.role === 'user' ? '0 4px 14px rgba(0,0,0,0.2)' : 'none',
                   }}>
                     {msg.image?.data && (
                       <img
@@ -558,7 +558,7 @@ export default function AITutorPage() {
                 You've used all 10 free messages today. Resets at midnight.
               </span>
             </div>
-            <button style={{ background: 'linear-gradient(135deg,#7C3AED,#5B21B6)', border: 'none', color: '#fff', padding: '7px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <button style={{ background: '#7C3AED', border: 'none', color: '#fff', padding: '7px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               Upgrade ₦5k/yr
             </button>
           </div>
@@ -617,7 +617,7 @@ export default function AITutorPage() {
             onClick={() => send()}
             disabled={(!input.trim() && attachments.length === 0) || loading || limitReached}
             style={{
-              background: (input.trim() || attachments.length > 0) && !loading && !limitReached ? 'linear-gradient(135deg,#7C3AED,#5B21B6)' : '#1E1450',
+              background: (input.trim() || attachments.length > 0) && !loading && !limitReached ? '#7C3AED' : '#1E1450',
               border: 'none', color: '#fff', width: 44, height: 44, borderRadius: 10,
               cursor: (input.trim() || attachments.length > 0) && !loading && !limitReached ? 'pointer' : 'default',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, alignSelf: 'flex-end',

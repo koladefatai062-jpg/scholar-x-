@@ -132,7 +132,7 @@ export default function QuizPage() {
           <div style={{ fontSize: 15, fontWeight: 700, color: C.white, marginBottom: 6 }}>{exam} · {subject}</div>
           <div style={{ fontSize: 13, color: C.muted, marginBottom: 18 }}>{count} questions · 45 seconds each · Reshuffled</div>
           <button onClick={startQuiz} disabled={loading}
-            style={{ background: loading ? C.border : `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '12px 28px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+            style={{ background: loading ? C.border : C.accent, border: 'none', color: '#fff', padding: '12px 28px', borderRadius: 9, fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Play size={16} />{loading ? 'Loading questions...' : 'Start quiz'}
           </button>
         </div>

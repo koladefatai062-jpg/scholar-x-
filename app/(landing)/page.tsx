@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowRight, ChevronRight, ChevronDown, Zap, Target,
-  Brain, BookOpen, Users, TrendingUp, Briefcase, Check, Crown
+  Brain, BookOpen, Users, TrendingUp, Briefcase, Check, Mail, Loader2, Crown
 } from 'lucide-react'
 import Logo from '@/components/Logo'
 
@@ -12,6 +12,31 @@ const C = {
   bg: '#0A0628', surface: '#110836', card: '#150D40', border: '#1E1450',
   accent: '#7C3AED', cyan: '#06B6D4', text: '#E2D9F3', muted: '#7B6FA0',
   white: '#FFFFFF', gold: '#F59E0B', green: '#22C55E',
+}
+
+const LAUNCH_AT = new Date('2026-09-15T00:00:00+01:00').getTime()
+
+const avatarGrads: [string, string][] = [
+  ['#7C3AED', '#06B6D4'],
+  ['#F59E0B', '#EF4444'],
+  ['#22C55E', '#06B6D4'],
+  ['#EC4899', '#8B5CF6'],
+  ['#06B6D4', '#3B82F6'],
+  ['#F97316', '#F59E0B'],
+]
+
+function RecentAvatar({ name, colorIndex, size = 30 }: { name: string; colorIndex: number; size?: number }) {
+  const grads = avatarGrads[colorIndex % avatarGrads.length] || avatarGrads[0]
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: `linear-gradient(135deg,${grads[0]},${grads[1]})`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: Math.round(size * 0.36), fontWeight: 700, color: '#fff',
+      border: `2px solid ${C.bg}`, flexShrink: 0,
+    }}>{initials}</div>
+  )
 }
 
 const exams = ['JAMB', 'WAEC', 'NECO', 'BECE', 'POST-UTME']
@@ -34,19 +59,91 @@ const features = [
 
 const faqs = [
   { q: 'What is ScholarX?', a: 'ScholarX is Nigeria\'s study platform — past questions, an AI tutor that explains things properly, a library, live study groups, grade tracking and more, for both secondary and university students.' },
+  { q: 'When is ScholarX launching?', a: 'We launch on 15 September 2026. Join the waitlist and you\'ll get in first on launch day.' },
   { q: 'Is ScholarX free?', a: 'Yes. There\'s a free plan forever — unlimited quizzes, the AI tutor (10 messages a day), library content, study groups and more. Premium costs ₦5,000 a year and unlocks everything.' },
   { q: 'Is it for secondary school or university students?', a: 'Both. Secondary students get SS1–SS3 and JAMB prep (WAEC, NECO, BECE, POST-UTME), and university students get their own questions, materials and grade tracking.' },
   { q: 'How does the AI tutor work?', a: 'You ask anything in plain English and it explains it properly — not just an answer. It remembers your conversation history per subject and is powered by Google Gemini.' },
   { q: 'Do I need a bank card to join?', a: 'No. Signing up and using the free plan needs nothing. If you ever upgrade to Premium, payment goes through Paystack.' },
   { q: 'Can I study with other people?', a: 'Yes — ScholarX has live study groups with real-time chat: share notes and PDFs, ask questions and study together with students across Nigeria.' },
+  { q: 'What happens when I join the waitlist?', a: 'You\'ll be on the list to get access first on launch day, and we\'ll email you the moment we go live.' },
 ]
 
 export default function LandingPage() {
   const router = useRouter()
   const [activeExam, setActiveExam] = useState('JAMB')
+
+  // Waitlist form
+  const [wlName, setWlName] = useState('')
+  const [wlEmail, setWlEmail] = useState('')
+  const [wlLevel, setWlLevel] = useState('')
+  const [wlState, setWlState] = useState<'idle' | 'sending' | 'added' | 'exists' | 'error'>('idle')
+  const [wlError, setWlError] = useState('')
+
+  // Social proof
+  const [count, setCount] = useState<number | null>(null)
+  const [recent, setRecent] = useState<{ first_name: string; color_index: number }[]>([])
+
+  // Countdown
+  const [timeLeft, setTimeLeft] = useState(() => calcTimeLeft())
+
+  // FAQ
   const [openFaq, setOpenFaq] = useState<number | null>(0)
 
-  const goSignup = () => router.push('/signup')
+  function calcTimeLeft() {
+    const diff = LAUNCH_AT - Date.now()
+    if (diff <= 0) return { done: true as const, d: 0, h: 0, m: 0, s: 0 }
+    return {
+      done: false as const,
+      d: Math.floor(diff / 86400000),
+      h: Math.floor((diff % 86400000) / 3600000),
+      m: Math.floor((diff % 3600000) / 60000),
+      s: Math.floor((diff % 60000) / 1000),
+    }
+  }
+
+  async function fetchCount() {
+    try {
+      const res = await fetch('/api/waitlist/count')
+      const data = await res.json()
+      if (data.count !== undefined) setCount(data.count)
+      if (Array.isArray(data.recent)) setRecent(data.recent)
+    } catch { /* keep defaults */ }
+  }
+
+  useEffect(() => { fetchCount() }, [])
+  useEffect(() => {
+    const t = setInterval(() => setTimeLeft(calcTimeLeft()), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  async function submitWaitlist(e: React.FormEvent) {
+    e.preventDefault()
+    setWlState('sending')
+    setWlError('')
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full_name: wlName, email: wlEmail, level: wlLevel }),
+      })
+      let data: { error?: string; status?: string } = {}
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error('The server returned an error. Please try again shortly.')
+      }
+      if (!res.ok) throw new Error(data.error || 'Something went wrong')
+      setWlState(data.status === 'exists' ? 'exists' : 'added')
+      setWlName(''); setWlEmail(''); setWlLevel('')
+      fetchCount()
+    } catch (err) {
+      setWlState('error')
+      setWlError(err instanceof Error ? err.message : 'Something went wrong')
+    }
+  }
+
+  const scrollToWaitlist = () => document.getElementById('waitlist')?.scrollIntoView({ behavior: 'smooth' })
+  const pad = (n: number) => String(n).padStart(2, '0')
 
   return (
     <div style={{ background: C.bg, minHeight: '100vh', fontFamily: "'Inter',-apple-system,sans-serif", color: C.text }}>
@@ -58,15 +155,15 @@ export default function LandingPage() {
             <Logo size={32} text="ScholarX" />
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <button onClick={goSignup} style={{ background: C.accent, border: 'none', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 700 }}>
-              Get started
+            <button onClick={scrollToWaitlist} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: 700 }}>
+              Join the waitlist
             </button>
           </div>
         </div>
       </nav>
 
       {/* HERO */}
-      <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '130px 24px 90px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+      <section id="waitlist" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '130px 24px 90px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: '12%', left: '8%', width: 380, height: 380, borderRadius: '50%', background: `radial-gradient(circle,${C.accent}1E,transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: '18%', right: '6%', width: 280, height: 280, borderRadius: '50%', background: `radial-gradient(circle,${C.cyan}16,transparent 70%)`, pointerEvents: 'none' }} />
 
@@ -84,14 +181,111 @@ export default function LandingPage() {
           Past questions, AI explanations, live study groups — everything secondary and university students in Nigeria need to actually pass.
         </p>
 
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
-          <button onClick={goSignup} style={{ background: C.accent, border: 'none', color: '#fff', padding: '14px 30px', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            Get started free <ArrowRight size={16} />
-          </button>
-          <button onClick={() => router.push('/features')} style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.text, padding: '13px 24px', borderRadius: 10, fontSize: 15, cursor: 'pointer', fontWeight: 600 }}>
-            See all features
-          </button>
-        </div>
+        {/* COUNTDOWN */}
+        {timeLeft.done ? (
+          <div style={{ fontSize: 20, fontWeight: 800, color: C.green, marginBottom: 28 }}>We're live! Get started below.</div>
+        ) : (
+          <div style={{ marginBottom: 30 }}>
+            <div style={{ fontSize: 12, color: C.muted, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>ScholarX launches in</div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              {[
+                [timeLeft.d, 'Days'], [timeLeft.h, 'Hours'], [timeLeft.m, 'Minutes'], [timeLeft.s, 'Seconds'],
+              ].map(([v, l]) => (
+                <div key={l as string} style={{ minWidth: 68, padding: '14px 10px', background: C.card, border: `1px solid ${C.border}`, borderRadius: 12 }}>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: C.white, lineHeight: 1 }}>{pad(v as number)}</div>
+                  <div style={{ fontSize: 10, color: C.muted, marginTop: 6, textTransform: 'uppercase', letterSpacing: 1 }}>{l as string}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* WAITLIST FORM */}
+        {wlState === 'added' || wlState === 'exists' ? (
+          <div style={{ background: C.card, border: `1px solid ${C.green}44`, borderRadius: 16, padding: '30px 28px', maxWidth: 440, width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: C.green, fontSize: 18, fontWeight: 800, marginBottom: 8 }}>
+              <span style={{ width: 34, height: 34, borderRadius: '50%', background: `${C.green}1E`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Check size={18} />
+              </span>
+              {wlState === 'added' ? "You're on the list!" : "You're already on the list"}
+            </div>
+            <p style={{ color: C.muted, fontSize: 14, marginBottom: 18 }}>We'll email you the moment ScholarX goes live on 15 September.</p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+              {recent.length > 0 && (
+                <div style={{ display: 'flex' }}>
+                  {recent.slice(0, 5).map((r, i) => (
+                    <div key={i} style={{ marginLeft: i === 0 ? 0 : -10 }}><RecentAvatar name={r.first_name} colorIndex={r.color_index} /></div>
+                  ))}
+                </div>
+              )}
+              <span style={{ fontSize: 13, color: C.muted }}>
+                {count !== null ? `Join ${count.toLocaleString()} students already on the list` : 'See you at launch'}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={submitWaitlist} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: '28px 24px', maxWidth: 440, width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <input
+              type="text"
+              placeholder="Full name (optional)"
+              value={wlName}
+              onChange={e => setWlName(e.target.value)}
+              style={{ padding: '13px 16px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.bg, color: C.white, fontSize: 14, outline: 'none' }}
+            />
+            <input
+              type="email"
+              required
+              placeholder="Email address"
+              value={wlEmail}
+              onChange={e => setWlEmail(e.target.value)}
+              style={{ padding: '13px 16px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.bg, color: C.white, fontSize: 14, outline: 'none' }}
+            />
+            <select
+              value={wlLevel}
+              onChange={e => setWlLevel(e.target.value)}
+              style={{ padding: '13px 16px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.bg, color: wlLevel ? C.white : C.muted, fontSize: 14, outline: 'none' }}
+            >
+              <option value="" disabled>What's your level?</option>
+              <option value="ss1">SS1</option>
+              <option value="ss2">SS2</option>
+              <option value="ss3">SS3 / JAMB candidate</option>
+              <option value="100l">University 100–200L</option>
+              <option value="300l">University 300L+</option>
+              <option value="other">Other</option>
+            </select>
+            {wlState === 'error' && <p style={{ color: '#F87171', fontSize: 13, margin: 0 }}>{wlError}</p>}
+            <button type="submit" disabled={wlState === 'sending'} style={{ padding: '14px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${C.accent},#5B21B6)`, color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: wlState === 'sending' ? 0.6 : 1 }}>
+              {wlState === 'sending' ? (<><Loader2 size={16} className="wlspin" /> Joining…</>) : (<><Mail size={16} /> Join the waitlist — it's free</>)}
+            </button>
+          </form>
+        )}
+
+        {/* SOCIAL PROOF */}
+        {wlState !== 'added' && wlState !== 'exists' && (
+          <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            {recent.length > 0 && (
+              <div style={{ display: 'flex' }}>
+                {recent.slice(0, 5).map((r, i) => (
+                  <div key={i} style={{ marginLeft: i === 0 ? 0 : -10 }}>
+                    <RecentAvatar name={r.first_name} colorIndex={r.color_index} />
+                  </div>
+                ))}
+              </div>
+            )}
+            {recent.length > 0 && (
+              <span style={{ fontSize: 13, color: C.muted }}>
+                {recent.slice(0, 3).map(r => r.first_name).filter(Boolean).join(', ')} joined{count !== null && count > recent.length ? ` — and ${(count - recent.length).toLocaleString()} others` : ''}
+              </span>
+            )}
+            {recent.length === 0 && count !== null && count > 0 && (
+              <span style={{ fontSize: 13, color: C.muted }}>{count.toLocaleString()} students already on the list</span>
+            )}
+          </div>
+        )}
+
+        <button onClick={() => router.push('/features')} style={{ marginTop: 28, background: 'transparent', border: 'none', color: C.muted, fontSize: 14, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+          See all features <ChevronRight size={15} />
+        </button>
       </section>
 
       {/* EXAMS */}
@@ -111,8 +305,8 @@ export default function LandingPage() {
               <h3 style={{ fontSize: 22, fontWeight: 800, color: C.white, marginBottom: 6 }}>{activeExam}</h3>
               <p style={{ color: C.muted, fontSize: 14, maxWidth: 480 }}>{examData[activeExam].desc}</p>
             </div>
-            <button onClick={goSignup} style={{ background: C.accent, border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 9, fontSize: 14, cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-              Get started <ArrowRight size={14} />
+            <button onClick={scrollToWaitlist} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 9, fontSize: 14, cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+              Join the waitlist <ArrowRight size={14} />
             </button>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -167,7 +361,7 @@ export default function LandingPage() {
                 <span style={{ fontSize: 13, color: C.muted }}>{f}</span>
               </div>
             ))}
-            <button onClick={goSignup} style={{ marginTop: 20, width: '100%', padding: '11px', borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Get started free</button>
+            <button onClick={scrollToWaitlist} style={{ marginTop: 20, width: '100%', padding: '11px', borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Join free</button>
           </div>
           <div style={{ background: `linear-gradient(160deg,${C.accent}15,${C.card})`, border: `1px solid ${C.accent}44`, borderRadius: 16, padding: 32, position: 'relative' }}>
             <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: `linear-gradient(90deg,${C.accent},${C.cyan})`, color: '#fff', fontSize: 10, fontWeight: 800, padding: '4px 12px', borderRadius: 100, letterSpacing: 1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Most popular</div>
@@ -180,7 +374,7 @@ export default function LandingPage() {
                 <span style={{ fontSize: 13, color: C.text }}>{f}</span>
               </div>
             ))}
-            <button onClick={goSignup} style={{ marginTop: 20, width: '100%', padding: '11px', borderRadius: 9, border: 'none', background: C.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={scrollToWaitlist} style={{ marginTop: 20, width: '100%', padding: '11px', borderRadius: 9, border: 'none', background: `linear-gradient(135deg,${C.accent},#5B21B6)`, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}><Crown size={14} /> Get Premium — ₦5,000/yr</span>
             </button>
           </div>
@@ -214,8 +408,8 @@ export default function LandingPage() {
             })}
           </div>
           <div style={{ textAlign: 'center', marginTop: 36 }}>
-            <button onClick={goSignup} style={{ background: C.accent, border: 'none', color: '#fff', padding: '13px 28px', borderRadius: 10, fontSize: 15, cursor: 'pointer', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              Get started <ArrowRight size={16} />
+            <button onClick={scrollToWaitlist} style={{ background: `linear-gradient(135deg,${C.accent},#5B21B6)`, border: 'none', color: '#fff', padding: '13px 28px', borderRadius: 10, fontSize: 15, cursor: 'pointer', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              Join the waitlist <ArrowRight size={16} />
             </button>
           </div>
         </div>
@@ -244,6 +438,8 @@ export default function LandingPage() {
         </div>
         <p style={{ color: C.muted, fontSize: 13 }}>© 2026 ScholarX. Built for Nigerian students.</p>
       </footer>
+
+      <style>{`@keyframes wlspin { to { transform: rotate(360deg) } } .wlspin { animation: wlspin .8s linear infinite }`}</style>
     </div>
   )
 }
